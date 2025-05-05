@@ -15,6 +15,7 @@ import { DeleteDataModelModal } from "@/components/data-model/delete-data-model-
 import { ImportModelModal } from "@/components/data-model/import-model-modal";
 import { ExportModelModal, ExportFormat } from "@/components/data-model/export-model-modal";
 import { exportDataModel } from "@/utils/export-utils";
+import { DataModelModal } from "@/components/data-model/data-model-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,15 +71,24 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
   
   // State for data model modals
   const [renameDataModelModalOpen, setRenameDataModelModalOpen] = useState(false);
-  const [dataModelToRename, setDataModelToRename] = useState<{id: string, name: string, projectId: string} | null>(null);
+  const [dataModelToRename, setDataModelToRename] = useState<DataModel | null>(null);
   
   const [deleteDataModelModalOpen, setDeleteDataModelModalOpen] = useState(false);
-  const [dataModelToDelete, setDataModelToDelete] = useState<{id: string, name: string, projectId: string} | null>(null);
+  const [dataModelToDelete, setDataModelToDelete] = useState<DataModel | null>(null);
   
-  // State for import/export modals
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [selectedModelForExport, setSelectedModelForExport] = useState<string | null>(null);
+  const [importModelModalOpen, setImportModelModalOpen] = useState(false);
+  const [importModelProjectId, setImportModelProjectId] = useState<string | null>(null);
+  
+  const [exportModelModalOpen, setExportModelModalOpen] = useState(false);
+  const [exportModelData, setExportModelData] = useState<{projectId: string, modelId: string, modelName: string} | null>(null);
+  
+  const [newDataModelModalOpen, setNewDataModelModalOpen] = useState(false);
+  const [newDataModelProjectId, setNewDataModelProjectId] = useState<string | null>(null);
+
+  const handleNewDataModelClick = (projectId: string) => {
+    setNewDataModelProjectId(projectId);
+    setNewDataModelModalOpen(true);
+  };
 
   // Check if current user is a superuser
   useEffect(() => {
@@ -401,15 +411,15 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
                         ))
                       )}
                       
-                      {/* Add new data model link */}
+                      {/* Add new data model button */}
                       <li>
-                        <Link 
-                          href={`/protected/projects/${project.id}/models/new`}
-                          className="flex items-center py-1.5 px-2 text-sm text-gray-400 hover:bg-gray-800/50 rounded-md"
+                        <button 
+                          onClick={() => handleNewDataModelClick(project.id)}
+                          className="flex items-center py-1.5 px-2 text-sm text-gray-400 hover:bg-gray-800/50 rounded-md w-full text-left"
                         >
                           <PlusIcon size={14} className="mr-2 flex-shrink-0" />
                           <span className="truncate">New Data Model</span>
-                        </Link>
+                        </button>
                       </li>
                     </ul>
                   )}
@@ -559,8 +569,8 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
       
       {/* Import Model Modal */}
       <ImportModelModal
-        open={isImportModalOpen}
-        onOpenChange={setIsImportModalOpen}
+        open={importModelModalOpen}
+        onOpenChange={setImportModelModalOpen}
         projects={projects}
         onImport={async (projectId, file) => {
           try {
@@ -590,20 +600,29 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
       
       {/* Export Model Modal */}
       <ExportModelModal
-        open={isExportModalOpen}
-        onOpenChange={setIsExportModalOpen}
+        open={exportModelModalOpen}
+        onOpenChange={setExportModelModalOpen}
         onExport={async (format) => {
           try {
-            if (selectedModelForExport) {
-              await exportDataModel(selectedModelForExport, format);
+            if (exportModelData) {
+              await exportDataModel(exportModelData.modelId, format);
             }
           } catch (error) {
             console.error('Error exporting model:', error);
           }
         }}
-        projectId={currentProjectId || ''}
-        dataModelId={selectedModelForExport || ''}
+        projectId={exportModelData?.projectId || currentProjectId || ''}
+        dataModelId={exportModelData?.modelId || ''}
       />
+      
+      {/* New Data Model Modal */}
+      {newDataModelProjectId && (
+        <DataModelModal
+          open={newDataModelModalOpen}
+          onOpenChange={setNewDataModelModalOpen}
+          projectId={newDataModelProjectId}
+        />
+      )}
     </div>
   );
 }
