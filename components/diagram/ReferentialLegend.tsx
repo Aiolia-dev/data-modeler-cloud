@@ -21,10 +21,10 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
   }
 
   return (
-    <div className="absolute left-0 top-0 bottom-0 w-48 bg-gray-900/80 backdrop-blur-sm border-r border-gray-800 z-10 overflow-hidden">
+    <div className="absolute left-0 top-[80px] bottom-0 w-48 bg-gray-900/80 backdrop-blur-sm border-r border-gray-800 z-10 overflow-hidden rounded-tr-md">
       <div className="p-4">
         <h3 className="text-sm font-semibold text-gray-200 mb-3">Referentials Legend</h3>
-        <ScrollArea className="h-[calc(100vh-250px)]">
+        <ScrollArea className="h-[calc(100vh-330px)]">
           <div className="space-y-2">
             {referentials.map((ref) => (
               <div key={ref.id} className="flex items-center gap-2">

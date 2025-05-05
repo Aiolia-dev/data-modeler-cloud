@@ -82,7 +82,7 @@ function ProtectedLayoutContent({
         </div>
         
         {/* Page content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1">
           <div className="pl-[50px] pr-4 py-4">
             {children}
           </div>
