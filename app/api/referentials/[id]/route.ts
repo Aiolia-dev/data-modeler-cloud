@@ -58,6 +58,15 @@ export async function GET(
   }
 }
 
+// Add PUT method that calls the PATCH method for compatibility
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  // Forward to PATCH handler
+  return PATCH(request, { params });
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -83,7 +92,7 @@ export async function PATCH(
     }
     
     // Extract fields from the request body
-    const { name, description, color } = body;
+    const { name, description, color, entityIds } = body;
     const referentialId = params.id;
     
     if (!referentialId) {
@@ -165,6 +174,48 @@ export async function PATCH(
     }
     
     console.log('Referential updated successfully:', updatedReferential);
+    
+    // Handle entity associations
+    if (entityIds !== undefined) {
+      try {
+        // First, clear any existing associations for this referential
+        console.log(`Clearing existing entity associations for referential ${referentialId}`);
+        const { error: clearError } = await adminClient
+          .from('entities')
+          .update({ referential_id: null })
+          .eq('referential_id', referentialId);
+          
+        if (clearError) {
+          console.error('Error clearing existing entity associations:', clearError);
+          // Continue anyway
+        } else {
+          console.log('Successfully cleared existing entity associations');
+        }
+        
+        // Then, if there are new entityIds, set those associations
+        if (Array.isArray(entityIds) && entityIds.length > 0) {
+          console.log(`Setting ${entityIds.length} new entity associations for referential ${referentialId}`);
+          const { error: updateError } = await adminClient
+            .from('entities')
+            .update({ referential_id: referentialId })
+            .in('id', entityIds);
+            
+          if (updateError) {
+            console.error('Error setting new entity associations:', updateError);
+          } else {
+            console.log('Successfully set new entity associations');
+          }
+        } else {
+          console.log('No new entity associations to set');
+        }
+      } catch (entityUpdateError) {
+        console.error('Exception during entity association updates:', entityUpdateError);
+        // Continue anyway
+      }
+    } else {
+      console.log('No entityIds provided, skipping entity association updates');
+    }
+    
     return NextResponse.json({ referential: updatedReferential });
     
   } catch (error: any) {

@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Extract fields from the request body
-    const { name, description, color, data_model_id } = body;
+    const { name, description, color, data_model_id, entityIds } = body;
     
     if (!name) {
       console.error('Referential name is required');
@@ -172,6 +172,31 @@ export async function POST(request: NextRequest) {
       }
       
       console.log('Referential created successfully:', referential);
+      
+      // If entityIds were provided, update those entities to associate them with this referential
+      if (entityIds && Array.isArray(entityIds) && entityIds.length > 0) {
+        console.log(`Updating ${entityIds.length} entities with referential_id: ${referential.id}`);
+        
+        try {
+          const { error: updateError } = await adminClient
+            .from('entities')
+            .update({ referential_id: referential.id })
+            .in('id', entityIds);
+          
+          if (updateError) {
+            console.error('Error updating entities with referential_id:', updateError);
+            // We'll still return success for the referential creation, but log the error
+          } else {
+            console.log('Successfully updated entities with referential_id');
+          }
+        } catch (updateError) {
+          console.error('Exception during entity update:', updateError);
+          // We'll still return success for the referential creation, but log the error
+        }
+      } else {
+        console.log('No entityIds provided, skipping entity updates');
+      }
+      
       return NextResponse.json({ referential });
     } catch (insertExecutionError: any) {
       console.error('Exception during insert execution:', insertExecutionError);

@@ -180,9 +180,12 @@ export function ReferentialModal({
     
     try {
       await onSave(formData, isEditing)
+      // Explicitly close the modal after successful save
+      onOpenChange(false)
       // Form will be reset when modal closes via the useEffect
     } catch (error) {
       console.error("Error saving referential:", error)
+      // Keep the modal open on error so the user can try again
     } finally {
       setIsSubmitting(false)
     }
@@ -191,15 +194,15 @@ export function ReferentialModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[490px]">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? 'Edit Referential' : 'Create New Referential'}</DialogTitle>
+          <DialogDescription>
+            {isEditing 
+              ? 'Update referential details and associated entities.' 
+              : 'Create a new referential to group related entities together.'}
+          </DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit Referential' : 'Create New Referential'}</DialogTitle>
-            <DialogDescription>
-              {isEditing 
-                ? 'Update referential details and associated entities.' 
-                : 'Create a new referential to group related entities together.'}
-            </DialogDescription>
-          </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
