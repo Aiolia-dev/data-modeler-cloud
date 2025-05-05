@@ -50,7 +50,13 @@ export default function EntityList({
 
   // Navigate to Diagram tab with selected entity
   const handleViewInModel = (entityId: string) => {
-    router.push(`/protected/projects/${projectId}/models/${modelId}?tab=diagram&selectedEntity=${entityId}`);
+    if (onViewInModel) {
+      // Use the callback provided by the parent component if available
+      onViewInModel(entityId);
+    } else {
+      // Default implementation as fallback
+      router.push(`/protected/projects/${projectId}/models/${modelId}?tab=diagram&selectedEntity=${entityId}`);
+    }
   };
 
   return (

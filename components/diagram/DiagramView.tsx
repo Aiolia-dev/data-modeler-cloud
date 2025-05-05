@@ -89,6 +89,28 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   useEffect(() => {
     setSelectedEntityId(initialSelectedEntityId);
   }, [initialSelectedEntityId]);
+  
+  // Listen for the custom focus-entity event
+  useEffect(() => {
+    const handleFocusEntity = (event: CustomEvent) => {
+      const { entityId } = event.detail;
+      console.log('[DiagramView] Received focus-entity event for entity:', entityId);
+      
+      // Set the selected entity ID
+      setSelectedEntityId(entityId);
+      
+      // Reset the centering flag to ensure the entity gets centered
+      setHasCenteredOnEntity(false);
+    };
+    
+    // Add event listener for the custom event
+    window.addEventListener('focus-entity', handleFocusEntity as EventListener);
+    
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener('focus-entity', handleFocusEntity as EventListener);
+    };
+  }, []);
   // Get the React Flow utility functions for coordinate transformation
   const { screenToFlowPosition } = useReactFlow();
   

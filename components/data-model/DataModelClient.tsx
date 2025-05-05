@@ -301,7 +301,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue={activeTab} onValueChange={handleTabChange} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid grid-cols-5 mb-8 bg-gray-800">
             <TabsTrigger value="entities" className="data-[state=active]:bg-gray-700">
               Entities
@@ -366,7 +366,18 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
                     const url = new URL(window.location.href);
                     url.searchParams.set("tab", "diagram");
                     url.searchParams.set("selectedEntity", entityId);
-                    router.push(url.toString());
+                    
+                    // Update the URL to reflect the current tab without a full page reload
+                    window.history.pushState({}, "", url.toString());
+                    
+                    // Important: Set the active tab to ensure the UI updates
+                    setActiveTab("diagram");
+                    
+                    // After a short delay to ensure the diagram tab is rendered, trigger a custom event
+                    // that the DiagramView component can listen for to focus on the entity
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('focus-entity', { detail: { entityId } }));
+                    }, 100);
                   }}
                 />
               )}
