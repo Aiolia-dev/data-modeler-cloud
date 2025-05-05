@@ -1,0 +1,1546 @@
+/* Custom input styles for both dark and light modes */
+
+/* Dark mode (default) */
+.dark .input-white,
+.dark .select-white .select-trigger,
+.dark .textarea-white {
+  background-color: white !important;
+  color: black !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Light mode */
+.input-white,
+.select-white .select-trigger,
+.textarea-white {
+  background-color: white !important;
+  color: black !important;
+  border: 1px solid #d1d5db !important;
+}
+
+/* Placeholders */
+.input-white::placeholder,
+.textarea-white::placeholder {
+  color: #9ca3af !important; /* Light gray for placeholders */
+}
+
+/* Select values */
+.select-white .select-trigger .select-value {
+  color: black !important;
+}
+
+.select-white .select-trigger .select-placeholder {
+  color: #9ca3af !important; /* Light gray for placeholders */
+}
+
+/* For checkboxes */
+/* Dark mode (default) */
+.dark .checkbox-white {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.dark .checkbox-white[data-state="checked"] {
+  background-color: white !important;
+  border-color: #e2e8f0 !important;
+}
+
+.dark .checkbox-white[data-state="checked"] svg {
+  color: black !important;
+}
+
+/* Light mode */
+.light .checkbox-white {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-color: white !important;
+  border: 2px solid #6B7280 !important;
+  height: 18px !important;
+  width: 18px !important;
+  border-radius: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.light .checkbox-white[data-state="checked"] {
+  background-color: #3B62DD !important;
+  border-color: #3B62DD !important;
+}
+
+.light .checkbox-white[data-state="checked"] svg {
+  color: white !important;
+  height: 14px !important;
+  width: 14px !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* For select content (dropdown) */
+/* Dark mode (default) */
+.dark .select-content-white {
+  background-color: white !important;
+  color: black !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.dark .select-content-white .select-item {
+  color: black !important;
+}
+
+.dark .select-content-white .select-item[data-highlighted="true"] {
+  background-color: #f3f4f6 !important; /* Light gray background for highlighted items */
+}
+
+/* Light mode */
+.select-content-white {
+  background-color: white !important;
+  color: black !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.select-content-white .select-item {
+  color: black !important;
+}
+
+.select-content-white .select-item[data-highlighted="true"] {
+  background-color: #f3f4f6 !important; /* Light gray background for highlighted items */
+}
+/* Additional styles for light mode */
+/* These styles help with specific components in light mode */
+
+/* Main application background and text */
+.light {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+}
+
+/* Main layout background */
+.light body, 
+.light .bg-background {
+  background-color: #f8f9fc !important;
+}
+
+/* Text colors */
+.light .text-white,
+.light .text-foreground {
+  color: #1e293b !important;
+}
+
+/* Header and navigation */
+.light nav {
+  background-color: white !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+/* Sidebar */
+.light .sidebar,
+.light [class*="sidebar"],
+.light [class*="projects"],
+.light div[class*="PROJECTS"] {
+  background-color: #F2F4FC !important;
+  border-right: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+/* Fix for the main sidebar container */
+.light div[class*="PROJECTS"] {
+  background-color: #F2F4FC !important;
+}
+
+/* Project list in sidebar */
+.light [class*="projects"] [class*="project-item"],
+.light .sidebar a,
+.light div[class*="PROJECTS"] a,
+.light div[class*="PROJECTS"] li {
+  color: #1e293b !important;
+}
+
+/* Fix for selected project icons in light mode - comprehensive approach */
+.light .bg-gray-800 svg,
+.light [class*="bg-gray-800"] svg,
+.light .sidebar .bg-gray-800 svg,
+.light .sidebar [class*="bg-gray-800"] svg,
+.light div[class*="PROJECTS"] .bg-gray-800 svg,
+.light div[class*="PROJECTS"] [class*="bg-gray-800"] svg {
+  color: #1e293b !important;
+  stroke: #1e293b !important;
+}
+
+/* Direct targeting of the specific chevron and folder icons */
+.light .sidebar li .bg-gray-800 .ChevronDown,
+.light .sidebar li .bg-gray-800 .ChevronRight,
+.light .sidebar li .bg-gray-800 .FolderIcon,
+.light .sidebar li [class*="bg-gray-800"] .ChevronDown,
+.light .sidebar li [class*="bg-gray-800"] .ChevronRight,
+.light .sidebar li [class*="bg-gray-800"] .FolderIcon {
+  color: #1e293b !important;
+  stroke: #1e293b !important;
+}
+
+/* Force override for any SVG in selected project row */
+.light .sidebar li .bg-gray-800 button svg *,
+.light .sidebar li [class*="bg-gray-800"] button svg * {
+  stroke: #1e293b !important;
+  color: #1e293b !important;
+}
+
+/* Fix for entity multiselect tags in light mode */
+.light .bg-primary\/10 {
+  background-color: #e0e7ff !important; /* Light indigo background */
+}
+
+.light .bg-primary\/10.text-primary {
+  color: #4f46e5 !important; /* Darker indigo text */
+}
+
+.light .text-primary {
+  color: #4f46e5 !important; /* Ensure consistent text color */
+}
+
+.light [class*="projects"] [class*="project-item"]:hover,
+.light .sidebar a:hover,
+.light div[class*="PROJECTS"] a:hover,
+.light div[class*="PROJECTS"] li:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Custom highlight styles for active projects and data models in light mode */
+html.light body .sidebar div[class*="bg-gray-800"],
+html.light body div[class*="flex"] div[class*="items-center"][class*="bg-gray-800"],
+html.light body li div[class*="bg-gray-800"],
+html.light body li div[class*="text-white"] {
+  background-color: #DCEAFE !important; /* Light blue for active projects */
+  color: #1e293b !important;
+}
+
+html.light body .sidebar a[class*="bg-gray-800"],
+html.light body a[class*="bg-gray-800"],
+html.light body a[class*="text-white"],
+html.light body li a[class*="bg-gray-800"] {
+  background-color: #EFF6FF !important; /* Lighter blue for active data models */
+  color: #1e293b !important;
+}
+
+/* Fix sidebar background color */
+.light div[class*="p-3"][class*="border-t"][class*="border-gray-800"],
+.light div[class*="border-gray-800"] {
+  background-color: #F2F4FC !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Override the inline bg-[#1a1a1a] in light mode - more specific selectors */
+.light div[class*="bg-[#1a1a1a]"],
+.light [class*="h-[calc(100vh-64px)"][class*="bg-[#1a1a1a]"],
+.light [class*="h-screen"] [class*="bg-[#1a1a1a]"],
+.light [class*="PROJECTS"] > div,
+.light [class*="sidebar"] > div {
+  background-color: #F2F4FC !important;
+}
+
+/* Fix sidebar buttons */
+.light a[class*="bg-gray-800"] {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.light a[class*="bg-gray-800"]:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Style Add Referential/Entity buttons in light mode */
+.light button[class*="bg-primary"],
+.light .bg-primary {
+  background-color: #2563eb !important; /* Blue color */
+  color: white !important;
+}
+
+.light button[class*="bg-primary"]:hover,
+.light .bg-primary:hover {
+  background-color: #1d4ed8 !important; /* Slightly darker blue on hover */
+}
+
+/* Cards and containers */
+.light .bg-gray-900,
+.light .bg-\[\#131824\] {
+  background-color: white !important;
+}
+
+.light .bg-gray-800 {
+  background-color: #f1f5f9 !important;
+}
+
+/* Borders */
+.light .border-gray-700,
+.light .border-\[\#272E3F\] {
+  border-color: #e2e8f0 !important;
+}
+
+.light .border-gray-600 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Entity node styling for light mode - Diagram View */
+.light [data-type="entityNode"] > div,
+.light .react-flow__node-entityNode > div {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #374151 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+}
+
+/* Entity node styling for light mode */
+.light .react-flow__node-entityNode > div {
+  border: 1px solid #E2E8F0 !important;
+}
+
+/* Entity node background for light mode */
+.light .react-flow__node-entityNode .entity-node.bg-gray-800,
+.light .react-flow__node-entityNode .entity-node.bg-\[\#2a3045\],
+.light .react-flow__node-entityNode .entity-node {
+  background-color: #FFFFFF !important;
+}
+
+/* Join entity styling for light mode */
+.light .react-flow__node-entityNode div.entity-node.bg-\[\#2a3045\],
+.light .react-flow__node-entityNode div.entity-node.border-gray-400,
+.light div[class*="entity-node"][class*="bg-\[\#2a3045\]"],
+.light div[class*="entity-node"][class*="border-gray-400"] {
+  border: 3px dashed #3B62DD !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+}
+
+/* Join entity styling for light mode */
+.light .react-flow__node-entityNode div.entity-node.bg-\[\#2a3045\],
+.light .react-flow__node-entityNode div.entity-node.border-gray-400,
+.light div[class*="entity-node"][class*="bg-\[\#2a3045\]"],
+.light div[class*="entity-node"][class*="border-gray-400"] {
+  border: 4px dashed #3B62DD !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+}
+
+/* Fix for join entity attributes container */
+.light .react-flow__node-entityNode div.entity-node.bg-\[\#2a3045\] > div:not(.entity-header),
+.light .react-flow__node-entityNode div.entity-node.border-gray-400 > div:not(.entity-header),
+.light .react-flow__node-entityNode .entity-node div.bg-\[\#262C40\],
+.light .react-flow__node-entityNode .entity-node div[style*="background-color: rgb(38, 44, 64)"] {
+  background-color: #FFFFFF !important;
+}
+
+/* Join entity header styling for light mode */
+.light .react-flow__node-entityNode div.entity-node.bg-\[\#2a3045\] .entity-header,
+.light .react-flow__node-entityNode div.entity-node.border-gray-400 .entity-header,
+.light div[class*="entity-node"][class*="bg-\[\#2a3045\]"] .entity-header,
+.light div[class*="entity-node"][class*="border-gray-400"] .entity-header,
+.light .react-flow__node-entityNode .entity-header[class*="bg-\[\#3a4055\]"] {
+  background-color: #9CA3AF !important;
+  color: #FFFFFF !important;
+  border-bottom: 1px solid #D1D5DB !important;
+}
+
+/* Card Header */
+.light [data-type="entityNode"] > div > div:first-child,
+.light .react-flow__node-entityNode > div > div:first-child,
+.light .react-flow__node-entityNode .entity-header {
+  background-color: #374151 !important;
+  color: #FFFFFF !important;
+  border-bottom: 1px solid #4B5563 !important;
+}
+
+/* Entity name in header - plain white text */
+.light .react-flow__node-entityNode .entity-header span {
+  color: #FFFFFF !important;
+  font-weight: 500 !important;
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Regular Attribute Rows */
+.light [data-type="entityNode"] > div > div:not(:first-child) > div,
+.light .react-flow__node-entityNode > div > div:not(:first-child) > div,
+.light .react-flow__node-entityNode .entity-node div[class*="px-2 py-1 flex items-center"] {
+  background-color: #FFFFFF !important;
+  color: #374151 !important;
+  border-bottom: 1px solid #F3F4F6 !important;
+  padding: 8px 16px !important;
+  transition: background-color 0.2s !important;
+}
+
+/* Override special attribute backgrounds in light mode */
+.light .react-flow__node-entityNode .entity-node div[class*="bg-purple-950"],
+.light .react-flow__node-entityNode .entity-node div[class*="bg-blue-950"],
+.light .react-flow__node-entityNode .entity-node div[class*="bg-opacity-30"],
+.light .react-flow__node-entityNode .entity-node.bg-\[\#2a3045\] div,
+.light .react-flow__node-entityNode .entity-node.border-gray-400 div {
+  background-color: #F8FAFC !important;
+  opacity: 1 !important;
+}
+
+.light [data-type="entityNode"] > div > div:not(:first-child) > div:hover,
+.light .react-flow__node-entityNode > div > div:not(:first-child) > div:hover {
+  background-color: #F9FAFB !important;
+}
+
+/* Foreign Key Rows - Using direct child selectors to target rows with foreign key spans */
+.light [data-type="entityNode"] > div > div:not(:first-child) > div:has(span.text-blue-300),
+.light [data-type="entityNode"] > div > div:not(:first-child) > div:has(span.text-blue-400),
+.light .react-flow__node-entityNode > div > div:not(:first-child) > div:has(span.text-blue-300),
+.light .react-flow__node-entityNode > div > div:not(:first-child) > div:has(span.text-blue-400) {
+  background-color: #EBF8FF !important;
+  border-bottom: 1px solid #DBEAFE !important;
+}
+
+.light [data-type="entityNode"] > div > div:not(:first-child) > div:has(span.text-blue-300):hover,
+.light [data-type="entityNode"] > div > div:not(:first-child) > div:has(span.text-blue-400):hover,
+.light .react-flow__node-entityNode > div > div:not(:first-child) > div:has(span.text-blue-300):hover,
+.light .react-flow__node-entityNode > div > div:not(:first-child) > div:has(span.text-blue-400):hover {
+  background-color: #DBEAFE !important;
+}
+
+/* Foreign Key Text */
+.light .text-blue-300,
+.light .react-flow__node-entityNode span.text-blue-300 {
+  color: #2563EB !important;
+}
+
+/* Foreign Key Icon */
+.light .text-blue-400,
+.light .react-flow__node-entityNode span.text-blue-400 {
+  color: #3B82F6 !important;
+}
+
+/* Primary Key Text */
+.light .text-purple-300,
+.light .react-flow__node-entityNode span.text-purple-300 {
+  color: #8B5CF6 !important;
+}
+
+/* Requirement Tags */
+.light .border-red-500,
+.light .text-red-400,
+.light .react-flow__node-entityNode .border-red-500,
+.light .react-flow__node-entityNode .text-red-400 {
+  background-color: #FEE2E2 !important;
+  color: #DC2626 !important;
+  border: 1px solid #FECACA !important;
+  border-radius: 9999px !important;
+  padding: 2px 6px !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+}
+
+.light .border-yellow-500,
+.light .text-yellow-400,
+.light .react-flow__node-entityNode .border-yellow-500,
+.light .react-flow__node-entityNode .text-yellow-400 {
+  background-color: #FEF3C7 !important;
+  color: #D97706 !important;
+  border: 1px solid #FDE68A !important;
+  border-radius: 9999px !important;
+  padding: 2px 6px !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+}
+
+/* Data Type Text */
+.light .text-gray-400,
+.light .react-flow__node-entityNode .text-gray-400 {
+  color: #6B7280 !important;
+  font-size: 0.75rem !important;
+}
+
+/* Icons */
+.light .react-flow__node-entityNode svg {
+  stroke: currentColor !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin-right: 8px !important;
+}
+
+/* Handle styling for light mode */
+.light .react-flow__handle {
+  background-color: #64748B !important;
+  border: 2px solid #FFFFFF !important;
+}
+
+/* Settings modal styling for light mode */
+.light .bg-\[\#131824\] {
+  background-color: white !important;
+  color: #1e293b !important;
+}
+
+.light .border-\[\#1e293b\] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Toggle switch styling for light mode */
+.light .switch,
+.light [role="switch"],
+.light button[role="switch"] {
+  position: relative !important;
+  width: 36px !important;
+  height: 20px !important;
+  background-color: #E2E8F0 !important; /* Light gray for off state */
+  border-radius: 10px !important;
+  transition: background-color 0.2s !important;
+  cursor: pointer !important;
+  overflow: hidden !important; /* Changed to hidden to prevent overflow */
+  padding: 0 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove focus outline for all states */
+.light .switch:focus,
+.light [role="switch"]:focus,
+.light button[role="switch"]:focus,
+.light .switch:focus-visible,
+.light [role="switch"]:focus-visible,
+.light button[role="switch"]:focus-visible,
+.light .switch:active,
+.light [role="switch"]:active,
+.light button[role="switch"]:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Target shadcn focus ring classes */
+.light .ring-offset-background:focus-visible,
+.light .focus-visible\:ring-2:focus-visible,
+.light .focus-visible\:ring-ring:focus-visible,
+.light .focus-visible\:ring-offset-2:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-offset-width: 0 !important;
+  --tw-ring-width: 0 !important;
+}
+
+.light .switch[data-state="checked"],
+.light [role="switch"][data-state="checked"],
+.light button[role="switch"][data-state="checked"] {
+  background-color: #3B82F6 !important; /* Blue for on state */
+}
+
+.light .switch::after,
+.light [role="switch"]::after,
+.light button[role="switch"]::after,
+.light .switch > span,
+.light [role="switch"] > span,
+.light button[role="switch"] > span {
+  content: "" !important;
+  position: absolute !important;
+  top: 2px !important;
+  left: 2px !important;
+  width: 16px !important;
+  height: 16px !important;
+  background-color: white !important;
+  border-radius: 50% !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  transition: transform 0.2s !important;
+  transform: translateX(0) !important;
+}
+
+.light .switch[data-state="checked"]::after,
+.light [role="switch"][data-state="checked"]::after,
+.light button[role="switch"][data-state="checked"]::after,
+.light .switch[data-state="checked"] > span,
+.light [role="switch"][data-state="checked"] > span,
+.light button[role="switch"][data-state="checked"] > span {
+  transform: translateX(16px) !important;
+}
+
+/* Ensure the Switch component from shadcn/ui is properly styled */
+.light .data-\[state\=checked\]\:bg-primary {
+  background-color: #3B82F6 !important;
+}
+
+.light .data-\[state\=unchecked\]\:bg-input {
+  background-color: #E2E8F0 !important;
+}
+
+.light .data-\[state\=checked\]\:translate-x-5 {
+  transform: translateX(16px) !important;
+}
+
+.light .data-\[state\=unchecked\]\:translate-x-0 {
+  transform: translateX(0) !important;
+}
+
+/* Tab navigation styling for light mode */
+.light [role="tablist"],
+.light .react-tabs__tab-list,
+.light .inline-flex[class*="bg-muted"] {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E5E7EB !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Sidebar navigation styling for light mode */
+.light div[class*="bg-[#1a1a1a]"] {
+  background-color: #F8FAFC !important;
+  border-right-color: #E2E8F0 !important;
+}
+
+/* Reset all sidebar items to default light mode colors first */
+.light .flex.items-center.px-3.py-2.text-sm.rounded-md {
+  background-color: transparent !important;
+  color: #475569 !important;
+  font-weight: normal !important;
+}
+
+.light a[href*="/models/"].flex.items-center.py-1\.5.px-2.text-sm.rounded-md {
+  background-color: transparent !important;
+  color: #64748B !important;
+  font-weight: normal !important;
+}
+
+.light .flex.items-center.px-3.py-2.text-sm.rounded-md span,
+.light a[href*="/models/"].flex.items-center.py-1\.5.px-2.text-sm.rounded-md span {
+  font-weight: normal !important;
+}
+
+/* Only highlight the active project */
+.light .flex.items-center.px-3.py-2.text-sm.rounded-md.bg-gray-800 {
+  background-color: #DCEAFE !important;
+  color: #1e293b !important;
+}
+
+/* Ensure project name text is dark in active projects */
+.light .flex.items-center.px-3.py-2.text-sm.rounded-md.bg-gray-800 span,
+.light .flex.items-center.px-3.py-2.text-sm.rounded-md.bg-gray-800 button span {
+  color: #1e293b !important;
+  font-weight: bold !important;
+}
+
+/* Only highlight the active data model */
+.light a[href*="/models/"].flex.items-center.py-1\.5.px-2.text-sm.rounded-md.bg-gray-800 {
+  background-color: #EFF6FF !important;
+  color: #1e293b !important;
+}
+
+/* Ensure data model name text is dark blue in active data models */
+.light a[href*="/models/"].flex.items-center.py-1\.5.px-2.text-sm.rounded-md.bg-gray-800 span {
+  color: #1e40af !important; /* Dark blue color */
+  font-weight: bold !important;
+}
+
+/* Project items hover state */
+.light .flex.items-center.px-3.py-2.text-sm.rounded-md:hover:not(.bg-gray-800) {
+  background-color: #F1F5F9 !important;
+}
+
+/* Lighter border for Import, Export, and Settings buttons in light mode */
+.light button[variant="outline"],
+.light [class*="gap-2"] button[class*="outline"],
+.light .flex-shrink-0.flex.items-center.gap-2 button {
+  border-color: rgba(203, 213, 225, 0.6) !important; /* 40% lighter border */
+}
+
+/* Change tab title color in light mode */
+.light h2.text-xl.font-semibold {
+  color: #2D3644 !important;
+}
+
+/* Data model items hover state */
+.light a[href*="/models/"].flex.items-center.py-1\.5.px-2.text-sm.rounded-md:hover:not(.bg-gray-800) {
+  background-color: #F1F5F9 !important;
+}
+
+/* New data model link */
+.light a[href*="/models/new"] {
+  color: #64748B !important;
+}
+
+/* New data model link hover */
+.light a[href*="/models/new"]:hover {
+  background-color: #F1F5F9 !important;
+}
+
+/* New project button */
+.light a[href="/protected/projects/new"] {
+  background-color: #E2E8F0 !important;
+  color: #475569 !important;
+}
+
+/* New project button hover */
+.light a[href="/protected/projects/new"]:hover {
+  background-color: #CBD5E1 !important;
+}
+
+/* Sidebar headings */
+.light div.px-3.py-2.text-sm.font-medium {
+  color: #64748B !important;
+}
+
+/* Sidebar icons */
+.light .text-gray-300 svg,
+.light .text-gray-400 svg {
+  color: #64748B !important;
+}
+
+/* Project chevron icons */
+.light button.flex.items-center.flex-1 svg {
+  color: #64748B !important;
+}
+
+/* Active project chevron icons */
+.light .bg-gray-800 button.flex.items-center.flex-1 svg,
+.light .flex.items-center.px-3.py-2.text-sm.rounded-md.bg-gray-800 svg {
+  color: white !important;
+}
+
+/* Tab items styling */
+.light [role="tab"],
+.light .react-tabs__tab,
+.light [data-state],
+.light [data-radix-collection-item] {
+  padding: 10px 16px !important;
+  color: #6B7280 !important; /* Medium gray for inactive */
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  font-weight: 400 !important;
+  transition: color 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+/* Active tab styling */
+.light [role="tab"][data-state="active"],
+.light .react-tabs__tab--selected,
+.light [data-state="active"] {
+  color: #2563EB !important; /* Blue for active */
+  font-weight: 500 !important;
+  background-color: transparent !important;
+  border-bottom: 2px solid #2563EB !important;
+  box-shadow: none !important;
+}
+
+/* Hover state for inactive tabs */
+.light [role="tab"]:not([data-state="active"]):hover,
+.light .react-tabs__tab:not(.react-tabs__tab--selected):hover,
+.light [data-radix-collection-item]:not([data-state="active"]):hover {
+  color: #374151 !important; /* Darker gray on hover */
+  background-color: transparent !important;
+}
+
+.light .hover\:bg-\[\#272E3F\]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.light .hover\:text-white:hover {
+  color: #1e293b !important;
+}
+
+/* Dialog styling */
+.light [role="dialog"] {
+  background-color: white !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Table styling for light mode */
+.light table {
+  background-color: white !important;
+  color: #1e293b !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: 0.5rem !important;
+  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.light th {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.light td {
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+/* Entity list table specific styling */
+.light table.entity-list,
+.light div[class*="entity-list"] table {
+  border: 1px solid #e2e8f0 !important;
+  margin-top: 1rem !important;
+}
+
+/* Table headers - dark grey, not capitalized */
+.light table th,
+.light thead th,
+.light tr:first-child th,
+.light [role="columnheader"],
+.light .entity-list th,
+.light .entity-list thead tr th {
+  color: #64748b !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  font-size: 0.85rem !important;
+  letter-spacing: normal !important;
+  background-color: #f8fafc !important;
+}
+
+/* Force all text-gray classes to be readable in light mode */
+.light .text-gray-100,
+.light .text-gray-200,
+.light .text-gray-300,
+.light .text-gray-400,
+.light .text-gray-500,
+.light [class*="text-gray-"] {
+  color: #2C58DA !important;
+  opacity: 1 !important;
+}
+
+/* Fix for entity descriptions */
+.light div[class*="truncate"],
+.light p[class*="truncate"],
+.light span[class*="truncate"] {
+  color: #2C58DA !important;
+  opacity: 1 !important;
+}
+
+.light table.entity-list tr,
+.light div[class*="entity-list"] tr {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.light table.entity-list tr:nth-child(even),
+.light div[class*="entity-list"] tr:nth-child(even) {
+  background-color: #f8fafc !important;
+}
+
+.light table.entity-list tr:hover,
+.light div[class*="entity-list"] tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.light table.entity-list th,
+.light div[class*="entity-list"] th {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  font-size: 0.85rem !important;
+  letter-spacing: normal !important;
+  padding: 0.75rem 1rem !important;
+  text-align: left !important;
+}
+
+/* Fix for the entity list count badges */
+.light table.entity-list td span,
+.light div[class*="entity-list"] td span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 1.5rem !important;
+  height: 1.5rem !important;
+  padding: 0 0.5rem !important;
+  border-radius: 9999px !important;
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+}
+
+/* Attribute list table styling */
+.light table.attribute-table,
+.light div[class*="attribute-table"] table {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.light table.attribute-table tr td,
+.light div[class*="attribute-table"] tr td {
+  background-color: white !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.light table.attribute-table tr:hover td,
+.light div[class*="attribute-table"] tr:hover td {
+  background-color: #f8fafc !important;
+}
+
+/* Attribute name styling */
+.light table.attribute-table tr td:first-child,
+.light div[class*="attribute-table"] tr td:first-child {
+  font-weight: 500 !important;
+  color: #1e293b !important;
+}
+
+/* Data type styling */
+.light table.attribute-table tr td:nth-child(2),
+.light div[class*="attribute-table"] tr td:nth-child(2) {
+  color: #6366f1 !important;
+  font-family: monospace !important;
+  font-size: 0.9rem !important;
+}
+
+/* Header row styling */
+.light table.attribute-table tr:first-child td,
+.light div[class*="attribute-table"] tr:first-child td,
+.light table.attribute-table thead th,
+.light div[class*="attribute-table"] thead th {
+  background-color: #f8fafc !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  text-transform: uppercase !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* Entity titles in the entity list */
+.light a[href*="/entities/"],
+.light [class*="entity-name"],
+.light .entity-title,
+.light td a,
+.light tr td:first-child,
+.light tr td:first-child a,
+.light tr td:first-child div {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+
+/* Entity names in the main entity list */
+.light table tr td:first-child a,
+.light table tr td:first-child div,
+.light [class*="entity-list"] tr td:first-child,
+.light [class*="entity-list"] tr td:first-child a,
+.light [class*="entity-list"] tr td:first-child div,
+.light tr td:first-child span,
+.light tr td:first-child p,
+.light [class*="text-gray-400"],
+.light [class*="text-gray-300"],
+.light [class*="text-gray-200"],
+.light [class*="text-em"],
+.light [class*="truncate"] {
+  color: #2C58DA !important; /* Blue color as requested */
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  opacity: 1 !important;
+}
+
+/* Entity name links */
+.light tr td:first-child a,
+.light [class*="entity-list"] tr td:first-child a {
+  color: #1e40af !important; /* Darker blue for links */
+}
+
+/* Entity description text */
+.light tr td:first-child small,
+.light tr td:first-child div small,
+.light [class*="entity-description"],
+.light tr td:first-child [class*="text-gray"],
+.light [class*="text-sm"][class*="text-gray"] {
+  color: #475569 !important; /* Medium slate for descriptions */
+  font-weight: normal !important;
+  font-size: 0.8rem !important;
+  opacity: 1 !important;
+}
+
+.light a[href*="/entities/"]:hover,
+.light [class*="entity-name"]:hover,
+.light .entity-title:hover,
+.light td a:hover,
+.light tr td:first-child a:hover {
+  text-decoration: underline !important;
+}
+
+/* Admin Direct Page Styling for Light Mode ONLY */
+.light .admin-page {
+  background-color: #F8F9FC !important;
+}
+
+.light .admin-page h1,
+.light .admin-page h2 {
+  color: #2D3644 !important;
+}
+
+.light .admin-page .card {
+  background-color: white !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .admin-page .project-card {
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 0.5rem !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.light .admin-page .project-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  transform: translateY(-2px) !important;
+}
+
+.light .admin-page .project-card h3 {
+  color: #2D3644 !important;
+  font-weight: 600 !important;
+}
+
+.light .admin-page .project-card p {
+  color: #64748B !important;
+}
+
+.light .admin-page .user-avatar {
+  background-color: #E2E8F0 !important;
+  color: #475569 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+.light .admin-page .user-info {
+  background-color: white !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #475569 !important;
+}
+
+.light .admin-page .search-box {
+  background-color: white !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #475569 !important;
+}
+
+.light .admin-page .search-box::placeholder {
+  color: #94A3B8 !important;
+}
+
+.light .admin-page .manage-access-btn {
+  background-color: #F1F5F9 !important;
+  color: #475569 !important;
+  border: 1px solid #E2E8F0 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.light .admin-page .manage-access-btn:hover {
+  background-color: #E2E8F0 !important;
+  color: #1E293B !important;
+}
+
+/* Entity description */
+.light tr td:first-child small,
+.light tr td:first-child div small,
+.light [class*="entity-description"] {
+  color: #64748b !important;
+  font-weight: normal !important;
+  font-size: 0.8rem !important;
+}
+
+/* Button styling for light mode */
+.light .bg-blue-600 {
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.light .hover\:bg-blue-700:hover {
+  background-color: #2563eb !important;
+}
+
+/* Secondary buttons */
+.light button[variant="outline"],
+.light .bg-transparent {
+  background-color: white !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+.light button[variant="outline"]:hover,
+.light .bg-transparent:hover {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+}
+
+/* Tabs styling */
+.light [role="tablist"] {
+  background-color: white !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.light [role="tab"] {
+  color: #64748b !important;
+  font-weight: 500 !important;
+}
+
+.light [role="tab"][data-state="active"] {
+  color: #3b82f6 !important;
+  border-bottom-color: #3b82f6 !important;
+}
+
+/* Project Access Page Styling for Light Mode ONLY */
+.light .project-access-page {
+  background-color: #F8F9FC !important;
+}
+
+.light .project-access-page .card {
+  background-color: white !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.light .project-access-page .card-content {
+  background-color: white !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .project-access-page .back-button {
+  color: #64748B !important;
+}
+
+.light .project-access-page .back-button:hover {
+  color: #3B82F6 !important;
+}
+
+.light .project-access-page .add-user-btn {
+  background-color: #3B82F6 !important;
+  color: white !important;
+}
+
+.light .project-access-page .add-user-btn:hover {
+  background-color: #2563EB !important;
+}
+
+.light .project-access-page .user-table {
+  background-color: white !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #1E293B !important;
+}
+
+.light .project-access-page .user-table thead {
+  border-bottom: 1px solid #E2E8F0 !important;
+  color: #64748B !important;
+  font-weight: 500 !important;
+}
+
+.light .project-access-page .user-table tbody tr {
+  border-bottom: 1px solid #F1F5F9 !important;
+}
+
+.light .project-access-page .user-table tbody tr:last-child {
+  border-bottom: none !important;
+}
+
+.light .project-access-page .user-avatar {
+  background-color: #E2E8F0 !important;
+  color: #475569 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+.light .project-access-page .user-email {
+  color: #1E293B !important;
+  font-weight: 500 !important;
+}
+
+.light .project-access-page .user-email-secondary {
+  color: #64748B !important;
+}
+
+.light .project-access-page .change-access-btn {
+  color: #3B82F6 !important;
+}
+
+.light .project-access-page .change-access-btn:hover {
+  color: #2563EB !important;
+  text-decoration: underline !important;
+}
+
+.light .project-access-page .remove-btn {
+  color: #EF4444 !important;
+}
+
+.light .project-access-page .remove-btn:hover {
+  color: #DC2626 !important;
+  text-decoration: underline !important;
+}
+
+/* Add User Modal Styling for Light Mode ONLY */
+.light .add-user-modal {
+  background-color: white !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.light .add-user-modal h2 {
+  color: #1E293B !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #F1F5F9 !important;
+  padding-bottom: 1rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.light .add-user-modal h3 {
+  color: #64748B !important;
+  font-weight: 500 !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.light .add-user-modal .search-box {
+  background-color: white !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 0.375rem !important;
+}
+
+.light .add-user-modal .user-list {
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 0.375rem !important;
+  overflow: hidden !important;
+}
+
+.light .add-user-modal .user-item {
+  border-bottom: 1px solid #F1F5F9 !important;
+}
+
+.light .add-user-modal .user-item:last-child {
+  border-bottom: none !important;
+}
+
+.light .add-user-modal .user-item.selected {
+  background-color: #EFF6FF !important;
+}
+
+.light .add-user-modal .user-item:hover {
+  background-color: #F8FAFC !important;
+}
+
+.light .add-user-modal .user-avatar {
+  background-color: #E2E8F0 !important;
+  color: #475569 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+.light .add-user-modal .user-name {
+  color: #1E293B !important;
+  font-weight: 500 !important;
+}
+
+.light .add-user-modal .user-email {
+  color: #3B82F6 !important;
+}
+
+.light .add-user-modal .access-level-section {
+  margin-top: 1.5rem !important;
+  padding-top: 1.5rem !important;
+  border-top: 1px solid #F1F5F9 !important;
+}
+
+.light .add-user-modal .radio-label {
+  color: #1E293B !important;
+}
+
+.light .add-user-modal .radio-description {
+  color: #64748B !important;
+}
+
+/* Modern Radio Button Styling for both Light and Dark Mode */
+.add-user-modal .modern-radio {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+.add-user-modal .radio-option {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 0.5rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Light mode specific styles */
+.light .add-user-modal .radio-option {
+  border: 1px solid #E2E8F0 !important;
+}
+
+.light .add-user-modal .radio-option:hover {
+  border-color: #CBD5E1 !important;
+  background-color: #F8FAFC !important;
+}
+
+.light .add-user-modal .radio-option.selected {
+  border-color: #3B82F6 !important;
+  background-color: #EFF6FF !important;
+}
+
+/* Dark mode specific styles */
+.dark .add-user-modal .radio-option {
+  border: 1px solid #334155 !important;
+}
+
+.dark .add-user-modal .radio-option:hover {
+  border-color: #475569 !important;
+  background-color: #1E293B !important;
+}
+
+.dark .add-user-modal .radio-option.selected {
+  border-color: #3B82F6 !important;
+  background-color: #1E40AF !important;
+}
+
+.add-user-modal .radio-circle {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  margin-right: 0.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+/* Light mode circle styles */
+.light .add-user-modal .radio-circle {
+  border: 2px solid #CBD5E1 !important;
+}
+
+.light .add-user-modal .radio-option.selected .radio-circle {
+  border-color: #3B82F6 !important;
+}
+
+/* Dark mode circle styles */
+.dark .add-user-modal .radio-circle {
+  border: 2px solid #475569 !important;
+}
+
+.dark .add-user-modal .radio-option.selected .radio-circle {
+  border-color: #60A5FA !important;
+}
+
+.add-user-modal .radio-circle::after {
+  content: "" !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background-color: transparent !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.light .add-user-modal .radio-option.selected .radio-circle::after {
+  background-color: #3B82F6 !important;
+}
+
+.dark .add-user-modal .radio-option.selected .radio-circle::after {
+  background-color: #60A5FA !important;
+}
+
+.add-user-modal .radio-content {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Light mode text styles */
+.light .add-user-modal .radio-label {
+  color: #1E293B !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+}
+
+.light .add-user-modal .radio-description {
+  color: #64748B !important;
+  font-size: 0.75rem !important;
+  margin-top: 0.25rem !important;
+}
+
+/* Dark mode text styles */
+.dark .add-user-modal .radio-label {
+  color: #F1F5F9 !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+}
+
+.dark .add-user-modal .radio-description {
+  color: #94A3B8 !important;
+  font-size: 0.75rem !important;
+  margin-top: 0.25rem !important;
+}
+
+.light .add-user-modal .cancel-btn {
+  background-color: #F1F5F9 !important;
+  color: #64748B !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+.light .add-user-modal .cancel-btn:hover {
+  background-color: #E2E8F0 !important;
+  color: #475569 !important;
+}
+
+.light .add-user-modal .add-btn {
+  background-color: #3B82F6 !important;
+  color: white !important;
+}
+
+.light .add-user-modal .add-btn:hover {
+  background-color: #2563EB !important;
+}
+
+/* Project cards in dark mode - set background color to #001429 */
+.dark .project-card {
+  background-color: #111827 !important;
+}
+
+/* ReactFlow grid dots in light mode - make them 20% lighter */
+.light .react-flow__background path {
+  stroke: #777777 !important; /* 20% lighter than #444 */
+}
+
+/* Entity attribute tabs */
+.light div[class*="attribute-tabs"] button,
+.light div[class*="tabs"] button {
+  background-color: transparent !important;
+  color: #64748b !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.light div[class*="attribute-tabs"] button[aria-selected="true"],
+.light div[class*="tabs"] button[aria-selected="true"],
+.light div[class*="attribute-tabs"] button.active,
+.light div[class*="tabs"] button.active {
+  color: #3b82f6 !important;
+  border-bottom-color: #3b82f6 !important;
+  background-color: transparent !important;
+}
+
+/* Form elements for light mode */
+.light input,
+.light select,
+.light textarea {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Badge styling */
+.light .badge {
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Entity count badges with subtle styling */
+.light [class*="count-badge"],
+.light [class*="badge"],
+.light span:has(> span[class*="count"]),
+.light div[class*="flex"] > span {
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 4px !important;
+  font-size: 0.75rem !important;
+  padding: 0.15rem 0.4rem !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 1.5rem !important;
+}
+
+/* Count badges with a more subtle styling */
+.light [class*="count-badge"],
+.light [class*="badge"],
+.light tr td span,
+.light tr td div > span {
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 4px !important;
+  font-size: 0.75rem !important;
+  padding: 0.15rem 0.4rem !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 1.5rem !important;
+}
+
+/* Attribute badge styling */
+.light span[class*="PK"],
+.light span[class*="FK"],
+.light span[class*="M"],
+.light span[class*="U"] {
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 4px !important;
+  font-size: 0.7rem !important;
+  padding: 0.1rem 0.3rem !important;
+  margin-right: 0.25rem !important;
+  font-weight: 500 !important;
+}
+
+/* Entity attributes styling */
+.light .attribute-row:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Tooltips */
+.light [role="tooltip"] {
+  background-color: #1e293b !important;
+  color: white !important;
+}

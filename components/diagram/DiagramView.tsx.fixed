@@ -1,0 +1,478 @@
+"use client";
+
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  Node,
+  Edge,
+  NodeTypes,
+  EdgeTypes,
+  useNodesState,
+  useEdgesState,
+  Panel,
+  useReactFlow,
+  ConnectionLineType,
+  ReactFlowProvider,
+  Position,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import EntityNode from './EntityNode';
+import RelationshipEdge from './RelationshipEdge';
+import { Button } from '@/components/ui/button';
+import { ZoomInIcon, ZoomOutIcon, RefreshCwIcon } from 'lucide-react';
+
+// Define node and edge types outside of the component to prevent recreation on each render
+const NODE_TYPES: NodeTypes = {
+  entityNode: EntityNode,
+};
+
+const EDGE_TYPES: EdgeTypes = {
+  relationshipEdge: RelationshipEdge,
+};
+
+interface DiagramViewProps {
+  dataModelId: string;
+  projectId: string;
+}
+
+// Inner component that uses React Flow hooks
+const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId }) => {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  
+  // Memoize node and edge types to prevent recreation on each render
+  const nodeTypes = useMemo(() => NODE_TYPES, []);
+  const edgeTypes = useMemo(() => EDGE_TYPES, []);
+
+  // Function to fetch entities and relationships from the API
+  const fetchDataModel = useCallback(async () => {
+    if (!dataModelId || !projectId) {
+      console.error('Missing dataModelId or projectId');
+      setError('Missing required parameters');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('Fetching data model:', dataModelId, projectId);
+
+      // Fetch the data model details including entities
+      const response = await fetch(`/api/projects/${projectId}/models/${dataModelId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch data model');
+      }
+      
+      const data = await response.json();
+      const entities = data.entities || [];
+
+      console.log('Fetched entities:', entities.length);
+
+      if (entities.length === 0) {
+        setNodes([]);
+        setEdges([]);
+        setLoading(false);
+        return;
+      }
+
+      // Create nodes from entities
+      const diagramNodes: Node[] = entities.map((entity: any, index: number) => {
+        // Use position from database if available, otherwise create a grid layout
+        let xPos, yPos;
+        
+        if (entity.position_x !== null && entity.position_y !== null && 
+            (entity.position_x !== 0 || entity.position_y !== 0)) {
+          // Use stored position
+          xPos = entity.position_x;
+          yPos = entity.position_y;
+          console.log(`Using stored position for ${entity.name}: (${xPos}, ${yPos})`);
+        } else {
+          // Generate default position in a grid layout
+          const columns = 3;
+          xPos = (index % columns) * 300 + 50;
+          yPos = Math.floor(index / columns) * 300 + 50;
+          console.log(`Generated position for ${entity.name}: (${xPos}, ${yPos})`);
+        }
+
+        return {
+          id: entity.id,
+          type: 'entityNode',
+          position: { x: xPos, y: yPos },
+          // Define anchor points on all four sides but don't specify default positions
+          // Let React Flow handle the connections automatically
+          data: {
+            id: entity.id,
+            name: entity.name,
+            description: entity.description,
+            attributes: [], // Will be populated later
+          },
+          draggable: true, // Allow entities to be dragged
+        };
+      });
+
+      // Fetch attributes for each entity
+      const attributePromises = entities.map(async (entity: any) => {
+        try {
+          const attrResponse = await fetch(`/api/attributes?entityId=${entity.id}`);
+          
+          if (!attrResponse.ok) {
+            console.error(`Failed to fetch attributes for entity ${entity.id}`);
+            return { entityId: entity.id, attributes: [] };
+          }
+          
+          const attrData = await attrResponse.json();
+          return { entityId: entity.id, attributes: attrData };
+        } catch (err) {
+          console.error(`Error fetching attributes for entity ${entity.id}:`, err);
+          return { entityId: entity.id, attributes: [] };
+        }
+      });
+
+      const attributesResults = await Promise.all(attributePromises);
+      console.log('Fetched attributes for all entities');
+      
+      // Update nodes with attributes
+      const updatedNodes = diagramNodes.map(node => {
+        const entityAttributes = attributesResults.find(result => result.entityId === node.id)?.attributes || [];
+        
+        // Debug: Log attributes with foreign key information
+        entityAttributes.forEach((attr: any) => {
+          if (attr.is_foreign_key || attr.referenced_entity_id) {
+            console.log(`Foreign key found in ${node.data.name}: ${attr.name} -> ${attr.referenced_entity_id}`);
+          }
+        });
+        
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            attributes: entityAttributes,
+          },
+        };
+      });
+      
+      setNodes(updatedNodes);
+
+      // Create edges from relationships (foreign keys)
+      const diagramEdges: Edge[] = [];
+      
+      // For each entity, check for foreign key attributes
+      console.log('Analyzing attributes for foreign key relationships:');
+      
+      // First, create a map of all attributes for easier lookup
+      const attributeMap = new Map();
+      attributesResults.forEach(result => {
+        const { entityId, attributes } = result;
+        attributeMap.set(entityId, attributes);
+      });
+      
+      // Helper function to determine the best anchor positions for an edge
+      const determineAnchorPositions = (sourceNode: any, targetNode: any) => {
+        // This function is now simplified as we're letting React Flow handle the connections
+        // We no longer need to manually calculate anchor positions
+        
+        // For reference, here's how we would calculate it if needed:
+        // const sourcePos = sourceNode.position;
+        // const targetPos = targetNode.position;
+        // const dx = targetPos.x - sourcePos.x;
+        // const dy = targetPos.y - sourcePos.y;
+        
+        // Let's determine which sides to connect based on relative positions
+        // if (Math.abs(dx) > Math.abs(dy)) {
+        //   // Horizontal connection is longer, connect left/right
+        //   return {
+        //     source: dx > 0 ? Position.Right : Position.Left,
+        //     target: dx > 0 ? Position.Left : Position.Right
+        //   };
+        // } else {
+        //   // Vertical connection is longer, connect top/bottom
+        //   return {
+        //     source: dy > 0 ? Position.Bottom : Position.Top,
+        //     target: dy > 0 ? Position.Top : Position.Bottom
+        //   };
+        // }
+        
+        // Instead, we'll return null and let React Flow handle it
+        return null;
+      };
+      
+      // Now process each entity to find relationships
+      entities.forEach((entity: any) => {
+        const entityId = entity.id;
+        const entityName = entity.name;
+        const attributes = attributeMap.get(entityId) || [];
+        
+        console.log(`Entity ${entityName} (${entityId}) has ${attributes.length} attributes`);
+        
+        // Look for attributes with 'FK' in the name or description
+        attributes.forEach((attr: any) => {
+          // Check if this is a foreign key by name convention (contains 'id' + EntityName)
+          const isPotentialFkByName = attr.name.toLowerCase().startsWith('id') && 
+                                     attr.data_type === 'integer';
+          
+          // Check if this is explicitly marked as a foreign key
+          const isExplicitFk = attr.is_foreign_key === true && attr.referenced_entity_id;
+          
+          console.log(`Checking attribute ${attr.name} in ${entityName}:`, {
+            isPotentialFkByName,
+            isExplicitFk,
+            is_foreign_key: attr.is_foreign_key,
+            referenced_entity_id: attr.referenced_entity_id,
+            data_type: attr.data_type
+          });
+          
+          if (isExplicitFk || isPotentialFkByName) {
+            let targetEntityId = attr.referenced_entity_id;
+            
+            // If it's not explicitly marked but follows naming convention, try to find the target entity
+            if (!targetEntityId && isPotentialFkByName) {
+              // Extract potential entity name from attribute name (e.g., "idCountry" -> "Country")
+              const potentialEntityName = attr.name.substring(2); // Remove 'id' prefix
+              
+              // Find the entity with matching name
+              const targetEntity = entities.find((e: any) => 
+                e.name.toLowerCase() === potentialEntityName.toLowerCase()
+              );
+              
+              if (targetEntity) {
+                targetEntityId = targetEntity.id;
+                console.log(`Found target entity by name: ${attr.name} -> ${targetEntity.name} (${targetEntityId})`);
+              }
+              
+              // Special case for Fund -> Country relationship
+              if (entityName === 'Fund' && attr.name === 'idCountry') {
+                const countryEntity = entities.find((e: any) => e.name === 'Country');
+                if (countryEntity) {
+                  targetEntityId = countryEntity.id;
+                  console.log(`Forcing connection for idCountry in Fund to Country entity with ID ${targetEntityId}`);
+                }
+              }
+            }
+            
+            // Only create edge if we have a target entity
+            if (targetEntityId) {
+              // Find the source and target nodes
+              const sourceNode = diagramNodes.find(node => node.id === entityId);
+              const targetNode = diagramNodes.find(node => node.id === targetEntityId);
+              
+              if (sourceNode && targetNode) {
+                // Determine the best anchor positions based on node positions
+                const anchorPositions = determineAnchorPositions(sourceNode, targetNode);
+                
+                // Create the edge
+                const edge: Edge = {
+                  id: `edge-${entityId}-${targetEntityId}-${attr.id}`,
+                  source: entityId,
+                  target: targetEntityId,
+                  type: 'relationshipEdge',
+                  data: {
+                    sourceCardinality: '0..N',
+                    targetCardinality: '1..1',
+                    label: attr.name,
+                  },
+                };
+                
+                diagramEdges.push(edge);
+                console.log(`Created edge: ${sourceNode.data.name} -> ${targetNode.data.name}`);
+              }
+            }
+          }
+        });
+      });
+      
+      setEdges(diagramEdges);
+      setLoading(false);
+      
+      // Fit the view to show all nodes
+      setTimeout(() => {
+        fitView({ padding: 0.2 });
+      }, 100);
+      
+    } catch (err) {
+      console.error('Error fetching data model:', err);
+      setError('Failed to load diagram. Please try again.');
+      setLoading(false);
+    }
+  }, [dataModelId, projectId, fitView]);
+  
+  // Fetch data model on component mount
+  useEffect(() => {
+    fetchDataModel();
+  }, [fetchDataModel]);
+  
+  // Handle node drag to update positions in the database
+  const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+    console.log(`Node ${node.data.name} dragged to:`, node.position);
+    
+    // Save the new position to the database
+    if (node.id) {
+      fetch(`/api/entities/${node.id}/position`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          position_x: node.position.x,
+          position_y: node.position.y,
+        }),
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to update entity position');
+          }
+          return response.json();
+        })
+        .then(() => {
+          console.log(`Position updated for entity ${node.id}`);
+        })
+        .catch(err => {
+          console.error('Error updating entity position:', err);
+        });
+    }
+  }, []);
+  
+  // Handle zoom in
+  const handleZoomIn = () => {
+    zoomIn();
+  };
+  
+  // Handle zoom out
+  const handleZoomOut = () => {
+    zoomOut();
+  };
+  
+  // Handle fit view
+  const handleFitView = () => {
+    fitView({ padding: 0.2 });
+  };
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading diagram...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center bg-destructive/15 text-destructive p-4 rounded-md max-w-md">
+          <p className="font-medium mb-2">Error loading diagram</p>
+          <p className="text-sm">{error}</p>
+          <Button 
+            variant="outline" 
+            className="mt-4" 
+            onClick={fetchDataModel}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full w-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeDragStop={handleNodeDragStop}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        fitView
+        minZoom={0.1}
+        maxZoom={2}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        attributionPosition="bottom-right"
+        connectionLineType={ConnectionLineType.SmoothStep}
+        defaultEdgeOptions={{
+          type: 'relationshipEdge',
+          animated: false,
+          style: { strokeWidth: 1.5 },
+        }}
+      >
+        <Background color="#444" gap={16} />
+        <Controls showInteractive={false} />
+        <MiniMap 
+          nodeStrokeColor={(n) => {
+            if (n.type === 'entityNode') return '#1f2937';
+            return '#1f2937';
+          }}
+          nodeColor={(n) => {
+            if (n.type === 'entityNode') return '#374151';
+            return '#374151';
+          }}
+          nodeBorderRadius={2}
+        />
+        <Panel position="top-right">
+          <div className="flex gap-2 bg-background p-2 rounded-md shadow-md">
+            <Button 
+              size="icon" 
+              variant="outline" 
+              onClick={handleZoomIn} 
+              title="Zoom In"
+            >
+              <ZoomInIcon size={16} />
+            </Button>
+            <Button 
+              size="icon" 
+              variant="outline" 
+              onClick={handleZoomOut} 
+              title="Zoom Out"
+            >
+              <ZoomOutIcon size={16} />
+            </Button>
+            <Button 
+              size="icon" 
+              variant="outline" 
+              onClick={handleFitView} 
+              title="Fit View"
+            >
+              <RefreshCwIcon size={16} />
+            </Button>
+          </div>
+        </Panel>
+      </ReactFlow>
+    </div>
+  );
+};
+
+// Wrapper component that provides the ReactFlowProvider
+// Use React.memo to prevent unnecessary re-renders
+const DiagramView: React.FC<DiagramViewProps> = React.memo((props) => {
+  // Use state to ensure we only render once
+  const [hasRendered, setHasRendered] = useState(false);
+  
+  useEffect(() => {
+    if (!hasRendered) {
+      setHasRendered(true);
+    }
+    
+    return () => {
+      console.log('DiagramView wrapper unmounting');
+    };
+  }, [hasRendered]);
+  
+  // Only render the content once hasRendered is true to prevent double rendering
+  return (
+    <ReactFlowProvider>
+      {hasRendered ? <DiagramContent {...props} /> : <div>Initializing diagram...</div>}
+    </ReactFlowProvider>
+  );
+});
+
+export default DiagramView;

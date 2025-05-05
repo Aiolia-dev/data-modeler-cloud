@@ -1,0 +1,81 @@
+/* Diagram styles */
+.entity-node {
+  min-width: 200px;
+  max-width: 300px;
+  transition: all 0.2s ease;
+}
+
+.entity-node.selected {
+  box-shadow: 0 0 0 2px hsl(var(--primary)) !important;
+}
+
+.entity-node .entity-header {
+  font-weight: 600;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.entity-node .entity-attributes {
+  /* Removed max-height to allow full height for all attributes */
+  overflow-y: visible;
+}
+
+/* Hide handles by default and show on hover */
+.react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.react-flow__node:hover .react-flow__handle,
+.react-flow__node.selected .react-flow__handle {
+  opacity: 1;
+}
+
+/* Custom scrollbar for attributes */
+.entity-attributes::-webkit-scrollbar {
+  width: 6px;
+}
+
+.entity-attributes::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.entity-attributes::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 3px;
+}
+
+.entity-attributes::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--accent));
+}
+
+/* React Flow overrides for dark theme */
+.react-flow__attribution {
+  background: transparent !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.react-flow__minimap {
+  background-color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.react-flow__controls {
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.react-flow__controls-button {
+  background: hsl(var(--background)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: hsl(var(--accent)) !important;
+}
+
+.react-flow__panel {
+  z-index: 5 !important;
+}
