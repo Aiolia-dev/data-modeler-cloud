@@ -11,6 +11,11 @@ export async function GET(
   const entityId = params.id;
   console.log(`[GET /api/entities/${entityId}] Fetching entity...`);
   
+  // Get authenticated user info for logging
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  console.log(`[GET /api/entities/${entityId}] User:`, user?.email, `(${user?.id})`, `Is superuser:`, user?.user_metadata?.is_superuser);
+  
   if (!entityId) {
     console.error(`[GET /api/entities/${entityId}] No entity ID provided.`);
     return NextResponse.json({ error: 'Entity ID is required' }, { status: 400 });
@@ -22,7 +27,9 @@ export async function GET(
   console.log(`[GET /api/entities/${entityId}] Data model ID from params:`, dataModelId);
   
   // Check user's role for this entity
+  console.log(`[GET /api/entities/${entityId}] Checking user role for entity...`);
   const { role, error: roleError } = await getEntityRole(entityId);
+  console.log(`[GET /api/entities/${entityId}] Role check result:`, { role, error: roleError });
   
   if (roleError) {
     console.error(`[GET /api/entities/${entityId}] Role check error:`, roleError);
@@ -30,15 +37,21 @@ export async function GET(
   }
   
   // Check if the user's role allows GET requests
-  if (!isMethodAllowedForRole('GET', role)) {
+  console.log(`[GET /api/entities/${entityId}] Checking if method GET is allowed for role ${role}...`);
+  const isAllowed = isMethodAllowedForRole('GET', role);
+  console.log(`[GET /api/entities/${entityId}] Method allowed:`, isAllowed);
+  
+  if (!isAllowed) {
     console.error(`[GET /api/entities/${entityId}] User with role ${role} not allowed to perform GET`);
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
   // Use admin client to bypass RLS
+  console.log(`[GET /api/entities/${entityId}] Creating admin client to bypass RLS...`);
   const adminClient = createAdminClient();
   
   // Build the query based on whether dataModelId is provided
+  console.log(`[GET /api/entities/${entityId}] Building query...`);
   let query = adminClient
     .from('entities')
     .select('*')
@@ -46,15 +59,34 @@ export async function GET(
     
   // Add data_model_id filter if provided
   if (dataModelId) {
+    console.log(`[GET /api/entities/${entityId}] Adding data_model_id filter: ${dataModelId}`);
     query = query.eq('data_model_id', dataModelId);
   }
   
   // Execute the query
-  const { data: entity, error } = await query.single();
+  console.log(`[GET /api/entities/${entityId}] Executing query...`);
+  let entity;
+  let queryError;
+  
+  try {
+    const result = await query.single();
+    entity = result.data;
+    queryError = result.error;
+    console.log(`[GET /api/entities/${entityId}] Query result:`, { 
+      entity: entity ? 'Found' : 'Not found', 
+      error: queryError ? queryError.message : 'None' 
+    });
+  } catch (error) {
+    console.error(`[GET /api/entities/${entityId}] Query execution error:`, error);
+    return NextResponse.json({ 
+      error: 'Error executing query', 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
+  }
 
-  if (error) {
-    console.error(`[GET /api/entities/${entityId}] Error fetching entity:`, error.message, error);
-    return NextResponse.json({ error: 'Failed to fetch entity', details: error.message }, { status: 404 });
+  if (queryError) {
+    console.error(`[GET /api/entities/${entityId}] Error fetching entity:`, queryError.message, queryError);
+    return NextResponse.json({ error: 'Failed to fetch entity', details: queryError.message }, { status: 404 });
   }
 
   if (!entity) {

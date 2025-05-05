@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, ChevronRightIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ReferentialModal } from "./referential-modal";
+import { usePermissions } from "@/context/permission-context";
+import { PermissionButton } from "@/components/ui/permission-button";
 
 interface Referential {
   id: string;
@@ -31,6 +33,7 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
   const [showModal, setShowModal] = useState(false);
   const [editingReferential, setEditingReferential] = useState<Referential | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
+  const { hasPermission } = usePermissions();
 
   // Fetch referentials and entities
   useEffect(() => {
@@ -162,13 +165,16 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Referentials</h2>
-        <Button 
+        <PermissionButton 
           className="bg-blue-600 hover:bg-blue-700"
           onClick={handleCreateReferential}
+          action="create"
+          projectId={projectId}
+          disabledMessage="You need editor or admin permissions to create referentials"
         >
           <Plus className="w-4 h-4 mr-2" />
           New Referential
-        </Button>
+        </PermissionButton>
       </div>
       
       {loading ? (
@@ -182,14 +188,17 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
       ) : referentials.length === 0 ? (
         <div className="text-center py-8 border border-dashed border-gray-700 rounded-lg">
           <p className="text-gray-400 mb-4">No referentials found in this data model</p>
-          <Button 
+          <PermissionButton 
             variant="outline" 
             className="border-gray-600"
             onClick={handleCreateReferential}
+            action="create"
+            projectId={projectId}
+            disabledMessage="You need editor or admin permissions to create referentials"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create your first referential
-          </Button>
+          </PermissionButton>
         </div>
       ) : (
         <div className="border border-gray-700 rounded-md overflow-hidden bg-gray-900">

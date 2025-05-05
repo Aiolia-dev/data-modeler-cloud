@@ -86,8 +86,11 @@ export async function PUT(
 
     console.log(`Updating attributes for entity ${params.entityId}`);
 
+    // Use admin client to bypass RLS policies
+    const adminSupabase = createAdminClient();
+    
     // Get existing attributes
-    const { data: existingAttributes, error: fetchError } = await supabase
+    const { data: existingAttributes, error: fetchError } = await adminSupabase
       .from("attributes")
       .select("id")
       .eq("entity_id", params.entityId);
@@ -108,7 +111,7 @@ export async function PUT(
     
     // Delete attributes that are no longer in the list
     if (idsToDelete.length > 0) {
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await adminSupabase
         .from("attributes")
         .delete()
         .in("id", idsToDelete);
@@ -126,7 +129,7 @@ export async function PUT(
     for (const attribute of attributes) {
       if (attribute.id) {
         // Update existing attribute - only include fields that exist in the database
-        const { error: updateError } = await supabase
+        const { error: updateError } = await adminSupabase
           .from("attributes")
           .update({
             name: attribute.name,
@@ -151,7 +154,7 @@ export async function PUT(
         }
       } else {
         // Insert new attribute - only include fields that exist in the database
-        const { error: insertError } = await supabase
+        const { error: insertError } = await adminSupabase
           .from("attributes")
           .insert({
             name: attribute.name,
@@ -179,7 +182,7 @@ export async function PUT(
     }
 
     // Get updated attributes
-    const { data: updatedAttributes, error: getUpdatedError } = await supabase
+    const { data: updatedAttributes, error: getUpdatedError } = await adminSupabase
       .from("attributes")
       .select("*")
       .eq("entity_id", params.entityId)

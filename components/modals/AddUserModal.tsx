@@ -91,6 +91,7 @@ export default function AddUserModal({
         },
         body: JSON.stringify({
           user_id: selectedUser.id,
+          email: selectedUser.email,
           role: role,
           access: accessLevel,
         }),

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     // Get request body
     const body = await req.json();
-    const { user_id, role, access } = body;
+    const { user_id, email, role, access } = body;
     
     // Validate input
     if (!user_id) {
@@ -109,6 +109,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .insert({
         project_id: projectId,
         user_id: user_id,
+        email: email,
         role: role,
         access: access,
       })

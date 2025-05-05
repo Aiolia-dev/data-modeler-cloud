@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2, Download, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "@/context/navigation-context";
 import { useProjectRefresh } from "@/context/project-refresh-context";
@@ -12,6 +12,9 @@ import { RenameProjectModal } from "@/components/project/rename-project-modal";
 import { DeleteProjectModal } from "@/components/project/delete-project-modal";
 import { RenameDataModelModal } from "@/components/data-model/rename-data-model-modal";
 import { DeleteDataModelModal } from "@/components/data-model/delete-data-model-modal";
+import { ImportModelModal } from "@/components/data-model/import-model-modal";
+import { ExportModelModal, ExportFormat } from "@/components/data-model/export-model-modal";
+import { exportDataModel } from "@/utils/export-utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +74,11 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
   
   const [deleteDataModelModalOpen, setDeleteDataModelModalOpen] = useState(false);
   const [dataModelToDelete, setDataModelToDelete] = useState<{id: string, name: string, projectId: string} | null>(null);
+  
+  // State for import/export modals
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [selectedModelForExport, setSelectedModelForExport] = useState<string | null>(null);
 
   // Check if current user is a superuser
   useEffect(() => {
@@ -425,6 +433,39 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
           {!isCollapsed && "New Project"}
         </Link>
         
+        {/* Import Model Button */}
+        <button
+          onClick={() => setIsImportModalOpen(true)}
+          className={cn(
+            "flex items-center justify-center w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
+            !isCollapsed && "justify-start"
+          )}
+        >
+          <Upload size={16} className="mr-2" />
+          {!isCollapsed && "Import Model"}
+        </button>
+        
+        {/* Export Model Button */}
+        <button
+          onClick={() => {
+            // If we have a current model ID, use that for export
+            if (currentModelId) {
+              setSelectedModelForExport(currentModelId);
+              setIsExportModalOpen(true);
+            } else {
+              // Otherwise just open the modal and let the user select
+              setIsExportModalOpen(true);
+            }
+          }}
+          className={cn(
+            "flex items-center justify-center w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
+            !isCollapsed && "justify-start"
+          )}
+        >
+          <Download size={16} className="mr-2" />
+          {!isCollapsed && "Export Model"}
+        </button>
+        
         {/* Admin Dashboard Link - Only visible to superusers */}
         {isSuperuser && (
           <Link 
@@ -515,6 +556,54 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
           }}
         />
       )}
+      
+      {/* Import Model Modal */}
+      <ImportModelModal
+        open={isImportModalOpen}
+        onOpenChange={setIsImportModalOpen}
+        projects={projects}
+        onImport={async (projectId, file) => {
+          try {
+            const formData = new FormData();
+            formData.append('projectId', projectId);
+            formData.append('modelName', 'Imported Model');
+            formData.append('file', file);
+            
+            const response = await fetch('/api/data-models/import', {
+              method: 'POST',
+              body: formData,
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to import model');
+            }
+            
+            // Refresh the data after import
+            window.location.reload();
+          } catch (error) {
+            console.error('Error importing model:', error);
+            throw error;
+          }
+        }}
+      />
+      
+      {/* Export Model Modal */}
+      <ExportModelModal
+        open={isExportModalOpen}
+        onOpenChange={setIsExportModalOpen}
+        onExport={async (format) => {
+          try {
+            if (selectedModelForExport) {
+              await exportDataModel(selectedModelForExport, format);
+            }
+          } catch (error) {
+            console.error('Error exporting model:', error);
+          }
+        }}
+        projectId={currentProjectId || ''}
+        dataModelId={selectedModelForExport || ''}
+      />
     </div>
   );
 }
