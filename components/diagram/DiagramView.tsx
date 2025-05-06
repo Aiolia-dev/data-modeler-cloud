@@ -24,7 +24,7 @@ import RelationshipEdge from './RelationshipEdge';
 import CircularContextMenu from './CircularContextMenu';
 import { DiagramSearch } from './DiagramSearch';
 import { Button } from '@/components/ui/button';
-import { BoxSelect, CrosshairIcon, Edit, Eye, EyeOff, Link, MessageSquare, Plus, PlusCircle, RefreshCw, Share2, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { BoxSelect, CrosshairIcon, Edit, Eye, EyeOff, Link, MessageSquare, Plus, PlusCircle, RefreshCw, Settings, Share2, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { usePermissions } from '@/context/permission-context';
 import { CommentModal } from './CommentModal';
 import { CommentData } from './CommentTypes';
@@ -33,6 +33,8 @@ import { CommentViewModal } from './CommentViewModal';
 import { EntityModal, EntityFormData } from '@/components/entity/entity-modal';
 import { ReferentialSelectionModal } from './ReferentialSelectionModal';
 import { ReferentialLegend } from './ReferentialLegend';
+import OptimizeButton from './OptimizeButton';
+import { SettingsModal } from '@/components/settings/settings-modal';
 
 // Define node and edge types outside of the component to prevent recreation on each render
 // These must be defined outside and remain constant
@@ -688,6 +690,7 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   };
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   
   // Update nodes with referential colors when referentials or nodes change
   useEffect(() => {
@@ -1057,6 +1060,9 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   
   // Referential legend visibility state
   const [showReferentialLegend, setShowReferentialLegend] = useState(true);
+  
+  // Settings modal state
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   
   // Track selected relationship
   const [selectedRelationship, setSelectedRelationship] = useState<{
@@ -1730,6 +1736,123 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
     fitView({ padding: 0.2 });
   };
   
+  // Handle layout optimization with animation
+  const handleOptimize = useCallback(async (optimizedNodes: Node[], updatedEdges?: Edge[]) => {
+    if (isOptimizing) return;
+    
+    try {
+      setIsOptimizing(true);
+      console.log('Starting layout optimization using Sugiyama algorithm...');
+      
+      // Create a copy of the current nodes to work with
+      const currentNodes = [...nodes];
+      
+      // Calculate the total animation duration based on node count
+      const totalDuration = 800; // milliseconds
+      const stepDuration = 20; // milliseconds per step
+      const steps = totalDuration / stepDuration;
+      
+      // For each node, calculate the total distance to move
+      const nodeMoves = currentNodes.map(node => {
+        const optimizedNode = optimizedNodes.find(n => n.id === node.id);
+        if (!optimizedNode) return { id: node.id, dx: 0, dy: 0 };
+        
+        return {
+          id: node.id,
+          dx: (optimizedNode.position.x - node.position.x) / steps,
+          dy: (optimizedNode.position.y - node.position.y) / steps
+        };
+      });
+      
+      // Animate the nodes moving to their new positions
+      for (let step = 0; step < steps; step++) {
+        // Update node positions incrementally
+        setNodes(prevNodes => {
+          return prevNodes.map(node => {
+            const move = nodeMoves.find(m => m.id === node.id);
+            if (!move) return node;
+            
+            return {
+              ...node,
+              position: {
+                x: node.position.x + move.dx,
+                y: node.position.y + move.dy
+              }
+            };
+          });
+        });
+        
+        // Wait for the next frame
+        await new Promise(resolve => setTimeout(resolve, stepDuration));
+      }
+      
+      // Ensure final positions are exactly as calculated
+      setNodes(prevNodes => {
+        return prevNodes.map(node => {
+          const optimizedNode = optimizedNodes.find(n => n.id === node.id);
+          if (!optimizedNode) return node;
+          
+          return {
+            ...node,
+            position: optimizedNode.position
+          };
+        });
+      });
+      
+      // Update edge anchor points if provided
+      if (updatedEdges && updatedEdges.length > 0) {
+        console.log('Updating edge anchor points for optimal connections...');
+        setEdges(prevEdges => {
+          return prevEdges.map(edge => {
+            const updatedEdge = updatedEdges.find(e => e.id === edge.id);
+            if (!updatedEdge) return edge;
+            
+            return {
+              ...edge,
+              sourceHandle: updatedEdge.sourceHandle,
+              targetHandle: updatedEdge.targetHandle,
+              data: {
+                ...edge.data,
+                sourcePosition: updatedEdge.sourceHandle,
+                targetPosition: updatedEdge.targetHandle,
+              }
+            };
+          });
+        });
+      }
+      
+      // Save the new positions to the database
+      for (const node of optimizedNodes) {
+        if (node.type === 'entityNode' && node.id) {
+          try {
+            const response = await fetch(`/api/entities/${node.id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                position_x: node.position.x,
+                position_y: node.position.y,
+              }),
+            });
+            
+            if (!response.ok) {
+              console.error(`Failed to update entity position: ${response.status}`);
+            }
+          } catch (error) {
+            console.error('Error updating entity position:', error);
+          }
+        }
+      }
+      
+      console.log('Hierarchical layout optimization complete');
+    } catch (error) {
+      console.error('Error during layout optimization:', error);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [nodes, setNodes, setEdges, isOptimizing]);
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -1793,21 +1916,7 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
             edges={dimmedEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onEdgeClick={(event, edge) => {
-              // Handle edge selection
-              event.stopPropagation();
-              
-              // Find source and target IDs for the edge
-              const sourceId = edge.source;
-              const targetId = edge.target;
-              
-              // Set the selected relationship
-              setSelectedRelationship({
-                id: edge.id,
-                sourceId,
-                targetId
-              });
-            }}
+            onEdgeClick={handleEdgeClick}
             onPaneContextMenu={handleBackgroundContextMenu}
             nodeTypes={NODE_TYPES}
             edgeTypes={EDGE_TYPES}
@@ -1936,6 +2045,12 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
                 >
                   <CrosshairIcon size={16} />
                 </Button>
+                <OptimizeButton
+                  nodes={nodes}
+                  edges={edges}
+                  onOptimize={handleOptimize}
+                  isOptimizing={isOptimizing}
+                />
                 <Button
                   size="icon"
                   variant="outline"
@@ -1959,6 +2074,14 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
                   title="Fit View"
                 >
                   <RefreshCw size={16} />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setShowSettingsModal(true)}
+                  title="Diagram Settings"
+                >
+                  <Settings size={16} />
                 </Button>
                 </div>
               </div>
@@ -2014,12 +2137,21 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
       
       {/* Comment View/Edit Modal */}
       <CommentViewModal
-        open={showCommentViewModal}
-        onOpenChange={setShowCommentViewModal}
+        open={selectedComment !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedComment(null);
+        }}
         comment={selectedComment}
         currentUserEmail={userEmail}
         onEdit={handleEditComment}
         onDelete={handleDeleteComment}
+      />
+      
+      {/* Settings Modal */}
+      <SettingsModal
+        open={showSettingsModal}
+        onOpenChange={setShowSettingsModal}
+        projectId={projectId}
       />
       
       {/* Entity Creation Modal */}

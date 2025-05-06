@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRightIcon, EyeIcon } from "lucide-react";
+import { ChevronRightIcon, EyeIcon, ChevronUpIcon, ChevronDownIcon, ArrowUpDownIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter, useParams } from "next/navigation";
 import RuleTooltip from "./rule-tooltip";
@@ -44,6 +44,27 @@ export default function EntityList({
   onSelectEntity,
   onViewInModel
 }: EntityListProps) {
+  // State for sorting
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
+  
+  // Function to toggle sort direction
+  const toggleSort = () => {
+    if (sortDirection === null) {
+      setSortDirection('asc');
+    } else if (sortDirection === 'asc') {
+      setSortDirection('desc');
+    } else {
+      setSortDirection(null);
+    }
+  };
+  
+  // Sort entities based on sort direction
+  const sortedEntities = [...entities];
+  if (sortDirection === 'asc') {
+    sortedEntities.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortDirection === 'desc') {
+    sortedEntities.sort((a, b) => b.name.localeCompare(a.name));
+  }
   const router = useRouter();
   const params = useParams();
   const projectId = params.id as string;
@@ -66,7 +87,22 @@ export default function EntityList({
         <thead>
           <tr className="bg-gray-800 border-b border-gray-700">
             <th className="w-10 px-4 py-3"></th>
-            <th className="text-left px-4 py-3 font-medium text-gray-200">Entity Name</th>
+            <th 
+              className="text-left px-4 py-3 font-medium text-gray-200 cursor-pointer hover:bg-gray-700/30 flex items-center gap-1"
+              onClick={toggleSort}
+              title="Click to sort by entity name"
+            >
+              <span>Entity Name</span>
+              <div className="ml-1 flex items-center">
+                {sortDirection === 'asc' ? (
+                  <ChevronUpIcon size={16} className="text-blue-400" />
+                ) : sortDirection === 'desc' ? (
+                  <ChevronDownIcon size={16} className="text-blue-400" />
+                ) : (
+                  <ArrowUpDownIcon size={14} className="text-gray-400" />
+                )}
+              </div>
+            </th>
             <th className="text-center px-4 py-3 font-medium text-gray-200">Attributes</th>
             <th className="text-center px-4 py-3 font-medium text-gray-200">Foreign Keys</th>
             <th className="text-center px-4 py-3 font-medium text-gray-200">Relationships</th>
@@ -76,7 +112,7 @@ export default function EntityList({
           </tr>
         </thead>
         <tbody>
-          {entities.map((entity) => (
+          {sortedEntities.map((entity) => (
             <tr 
               key={entity.id} 
               className="border-t border-gray-700 hover:bg-gray-800/30 cursor-pointer"
