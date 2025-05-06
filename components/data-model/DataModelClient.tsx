@@ -4,18 +4,13 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Plus, Upload } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import DiagramView from "@/components/diagram/DiagramView";
 import EntityList from "@/components/entity/entity-list";
 import { RulesListView } from "@/components/rules/rules-list-view";
 import { ReferentialList } from "@/components/referential/referential-list";
 import { EntityModal, EntityFormData } from "@/components/entity/entity-modal";
-import { ImportModelModal } from "@/components/data-model/import-model-modal";
-import { ExportModelModal, ExportFormat } from "@/components/data-model/export-model-modal";
-import { exportDataModel } from "@/utils/export-utils";
-import { usePermissions } from "@/context/permission-context";
-import { PermissionButton } from "@/components/ui/permission-button";
 
 interface DataModelClientProps {
   projectId: string;
@@ -28,7 +23,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || "entities");
   
-  // State for entities, referentials, and other data
+  // Entity-related state
   const [entities, setEntities] = useState<any[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(true);
   const [attributeCounts, setAttributeCounts] = useState<Record<string, number>>({});
@@ -42,29 +37,10 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   const [dataModel, setDataModel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAddEntityModalOpen, setIsAddEntityModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  
+  // Entity modal state
+  const [showEntityModal, setShowEntityModal] = useState(false);
   const [availableReferentials, setAvailableReferentials] = useState<any[]>([]);
-  const [referentials, setReferentials] = useState<any[]>([]);
-  const [projects, setProjects] = useState<{id: string, name: string}[]>([]);
-
-  // Fetch projects for the import modal
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await fetch('/api/projects');
-        if (response.ok) {
-          const data = await response.json();
-          setProjects(data.projects || []);
-        }
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-      }
-    };
-    
-    fetchProjects();
-  }, []);
 
   useEffect(() => {
     // Fetch the data model details
@@ -266,7 +242,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
       }
       
       // Close the modal
-      setIsAddEntityModalOpen(false);
+      setShowEntityModal(false);
     } catch (err) {
       console.error('Error creating entity:', err);
     }
@@ -315,28 +291,8 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
           </Link>
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">{dataModel?.name || "Data Model"}</h1>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="border-gray-700 text-gray-300"
-                onClick={() => setIsImportModalOpen(true)}
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Import
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="border-gray-700 text-gray-300"
-                onClick={() => setIsExportModalOpen(true)}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-              <div className="text-sm text-gray-400 ml-2">
-                Version {dataModel?.version || "1.0"} • Updated {dataModel?.updated_at ? new Date(dataModel.updated_at).toLocaleString() : "recently"}
-              </div>
+            <div className="text-sm text-gray-400">
+              Version {dataModel?.version || "1.0"} • Updated {dataModel?.updated_at ? new Date(dataModel.updated_at).toLocaleString() : "recently"}
             </div>
           </div>
           {dataModel?.description && (
@@ -368,16 +324,13 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Entities</h2>
-                <PermissionButton 
+                <Button 
                   className="bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setIsAddEntityModalOpen(true)}
-                  action="create"
-                  projectId={projectId}
-                  disabledMessage="You need editor or admin permissions to create entities"
+                  onClick={() => setShowEntityModal(true)}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   New Entity
-                </PermissionButton>
+                </Button>
               </div>
               
               {entitiesLoading ? (
@@ -387,17 +340,14 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
               ) : entities.length === 0 ? (
                 <div className="text-center py-8 border border-dashed border-gray-700 rounded-lg">
                   <p className="text-gray-400 mb-4">No entities found in this data model</p>
-                  <PermissionButton 
+                  <Button 
                     variant="outline" 
                     className="border-gray-600"
-                    onClick={() => setIsAddEntityModalOpen(true)}
-                    action="create"
-                    projectId={projectId}
-                    disabledMessage="You need editor or admin permissions to create entities"
+                    onClick={() => setShowEntityModal(true)}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create your first entity
-                  </PermissionButton>
+                  </Button>
                 </div>
               ) : (
                 <EntityList
@@ -469,57 +419,11 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
       
       {/* Entity Modal */}
       <EntityModal
-        open={isAddEntityModalOpen}
-        onOpenChange={setIsAddEntityModalOpen}
+        open={showEntityModal}
+        onOpenChange={setShowEntityModal}
         onSave={handleCreateEntity}
         availableEntities={entities}
         availableReferentials={availableReferentials}
-      />
-
-      {/* Import Modal */}
-      <ImportModelModal
-        open={isImportModalOpen}
-        onOpenChange={setIsImportModalOpen}
-        projects={[{ id: projectId, name: dataModel?.name || 'Current Project' }]}
-        onImport={async (projectId, file) => {
-          try {
-            const formData = new FormData();
-            formData.append('projectId', projectId);
-            formData.append('modelName', dataModel?.name || 'Imported Model');
-            formData.append('file', file);
-            
-            const response = await fetch('/api/data-models/import', {
-              method: 'POST',
-              body: formData,
-            });
-            
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || 'Failed to import model');
-            }
-            
-            // Refresh the data after import
-            window.location.reload();
-          } catch (error) {
-            console.error('Error importing model:', error);
-            throw error;
-          }
-        }}
-      />
-
-      {/* Export Modal */}
-      <ExportModelModal
-        open={isExportModalOpen}
-        onOpenChange={setIsExportModalOpen}
-        onExport={async (format) => {
-          try {
-            await exportDataModel(modelId, format);
-          } catch (error) {
-            console.error('Error exporting model:', error);
-          }
-        }}
-        projectId={projectId}
-        dataModelId={modelId}
       />
     </div>
   );

@@ -180,33 +180,19 @@ async function fetchDataModelViaAPI(dataModelId: string): Promise<ExportAttribut
  */
 export async function exportDataModel(dataModelId: string, format: 'csv' | 'excel' | 'json' | 'svg'): Promise<void> {
   try {
-    // Extract the project ID from the URL
-    const urlParts = window.location.pathname.split('/');
-    const projectIdIndex = urlParts.findIndex(part => part === 'projects') + 1;
-    const projectId = urlParts[projectIdIndex];
-    
-    if (!projectId) {
-      throw new Error('Could not determine project ID from URL');
-    }
-    
     // Get the data model name for the filename
-    const dataModelResponse = await fetch(`/api/projects/${projectId}/models/${dataModelId}`);
+    const dataModelResponse = await fetch(`/api/data-models/${dataModelId}`);
     if (!dataModelResponse.ok) {
       throw new Error(`Failed to fetch data model: ${dataModelResponse.statusText}`);
     }
-    const dataModel = await dataModelResponse.json().then(data => data.dataModel);
+    const dataModel = await dataModelResponse.json();
     
     // Fetch all entities for this data model
     const entitiesResponse = await fetch(`/api/entities?dataModelId=${dataModelId}`);
     if (!entitiesResponse.ok) {
       throw new Error(`Failed to fetch entities: ${entitiesResponse.statusText}`);
     }
-    const entitiesData = await entitiesResponse.json();
-    const entities = entitiesData.entities || [];
-    
-    if (!entities || !Array.isArray(entities) || entities.length === 0) {
-      throw new Error('No entities found for this data model');
-    }
+    const entities = await entitiesResponse.json();
     
     // Prepare the data for export
     const exportData: ExportAttribute[] = [];
@@ -217,22 +203,16 @@ export async function exportDataModel(dataModelId: string, format: 'csv' | 'exce
       if (!attributesResponse.ok) {
         throw new Error(`Failed to fetch attributes for entity ${entity.name}: ${attributesResponse.statusText}`);
       }
-      const attributesData = await attributesResponse.json();
-      const attributes = attributesData.attributes || [];
-      
-      if (!attributes || !Array.isArray(attributes)) {
-        console.warn(`No attributes found for entity ${entity.name}`);
-        continue; // Skip this entity but continue with others
-      }
+      const attributes = await attributesResponse.json();
       
       // Add each attribute to the export data
       for (const attribute of attributes) {
         let referencedEntity = '';
         
         // If this is a foreign key, get the referenced entity
-        if (attribute.is_foreign_key && attribute.referenced_entity_id) {
+        if (attribute.isForeignKey && attribute.referencedEntityId) {
           // Find the referenced entity in our list
-          const referenced = entities.find((e: any) => e.id === attribute.referenced_entity_id);
+          const referenced = entities.find((e: any) => e.id === attribute.referencedEntityId);
           if (referenced) {
             referencedEntity = referenced.name;
           }
@@ -241,11 +221,11 @@ export async function exportDataModel(dataModelId: string, format: 'csv' | 'exce
         exportData.push({
           Entity: entity.name,
           AttributeName: attribute.name,
-          IsStandardAttribute: !attribute.is_primary_key && !attribute.is_foreign_key,
-          IsForeignKey: attribute.is_foreign_key,
-          IsRequired: attribute.is_required || false,
-          IsUnique: attribute.is_unique || false,
-          DataType: attribute.data_type,
+          IsStandardAttribute: !attribute.isPrimaryKey && !attribute.isForeignKey,
+          IsForeignKey: attribute.isForeignKey,
+          IsRequired: !attribute.isNullable,
+          IsUnique: attribute.isUnique,
+          DataType: attribute.dataType,
           ReferencedEntity: referencedEntity
         });
       }
