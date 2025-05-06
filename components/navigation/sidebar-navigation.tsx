@@ -572,8 +572,8 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
       
       {/* Import Model Modal */}
       <ImportModelModal
-        open={importModelModalOpen}
-        onOpenChange={setImportModelModalOpen}
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
         projects={projects}
         onImport={async (projectId, file) => {
           try {
