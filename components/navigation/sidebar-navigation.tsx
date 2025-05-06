@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2, Download, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "@/context/navigation-context";
 import { useProjectRefresh } from "@/context/project-refresh-context";
@@ -12,6 +12,10 @@ import { RenameProjectModal } from "@/components/project/rename-project-modal";
 import { DeleteProjectModal } from "@/components/project/delete-project-modal";
 import { RenameDataModelModal } from "@/components/data-model/rename-data-model-modal";
 import { DeleteDataModelModal } from "@/components/data-model/delete-data-model-modal";
+import { ImportModelModal } from "@/components/data-model/import-model-modal";
+import { ExportModelModal } from "@/components/data-model/export-model-modal";
+import { CreateProjectModal } from "@/components/project/create-project-modal";
+import { CreateDataModelModal } from "@/components/data-model/create-data-model-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +75,18 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
   
   const [deleteDataModelModalOpen, setDeleteDataModelModalOpen] = useState(false);
   const [dataModelToDelete, setDataModelToDelete] = useState<{id: string, name: string, projectId: string} | null>(null);
+  
+  // State for import/export modals
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [selectedModelForExport, setSelectedModelForExport] = useState<{id: string, projectId: string} | null>(null);
+  
+  // State for create project modal
+  const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
+  
+  // State for create data model modal
+  const [createDataModelModalOpen, setCreateDataModelModalOpen] = useState(false);
+  const [selectedProjectForModel, setSelectedProjectForModel] = useState<string>("");
 
   // Check if current user is a superuser
   useEffect(() => {
@@ -395,13 +411,16 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
                       
                       {/* Add new data model link */}
                       <li>
-                        <Link 
-                          href={`/protected/projects/${project.id}/models/new`}
-                          className="flex items-center py-1.5 px-2 text-sm text-gray-400 hover:bg-gray-800/50 rounded-md"
+                        <button
+                          onClick={() => {
+                            setSelectedProjectForModel(project.id);
+                            setCreateDataModelModalOpen(true);
+                          }}
+                          className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md transition-colors w-full"
                         >
                           <PlusIcon size={14} className="mr-2 flex-shrink-0" />
                           <span className="truncate">New Data Model</span>
-                        </Link>
+                        </button>
                       </li>
                     </ul>
                   )}
@@ -414,8 +433,8 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
       
       {/* New Project button at bottom */}
       <div className="p-3 border-t border-gray-800 space-y-2">
-        <Link 
-          href="/protected/projects/new"
+        <button
+          onClick={() => setCreateProjectModalOpen(true)}
           className={cn(
             "flex items-center justify-center w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
             !isCollapsed && "justify-start"
@@ -423,7 +442,40 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
         >
           <PlusIcon size={16} className="mr-2" />
           {!isCollapsed && "New Project"}
-        </Link>
+        </button>
+        
+        {/* Import Button */}
+        <button
+          onClick={() => setImportModalOpen(true)}
+          className={cn(
+            "flex items-center justify-center w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
+            !isCollapsed && "justify-start"
+          )}
+        >
+          <Upload size={16} className="mr-2" />
+          {!isCollapsed && "Import"}
+        </button>
+        
+        {/* Export Button */}
+        <button
+          onClick={() => {
+            // If there's a current model, pre-select it for export
+            if (currentModelId && currentProjectId) {
+              setSelectedModelForExport({
+                id: currentModelId,
+                projectId: currentProjectId
+              });
+            }
+            setExportModalOpen(true);
+          }}
+          className={cn(
+            "flex items-center justify-center w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
+            !isCollapsed && "justify-start"
+          )}
+        >
+          <Download size={16} className="mr-2" />
+          {!isCollapsed && "Export"}
+        </button>
         
         {/* Admin Dashboard Link - Only visible to superusers */}
         {isSuperuser && (
@@ -513,6 +565,92 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
               return updatedModels;
             });
           }}
+        />
+      )}
+      
+      {/* Import Model Modal */}
+      <ImportModelModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        projects={projects}
+        onImport={async (projectId, file) => {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch(`/api/projects/${projectId}/import`, {
+              method: 'POST',
+              body: formData,
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Failed to import model');
+            }
+            
+            // Refresh data models for the project
+            await fetchDataModels(projectId);
+            
+            // Expand the project to show the newly imported model
+            if (!expandedProjects.includes(projectId)) {
+              toggleProject(projectId);
+            }
+          } catch (error) {
+            console.error('Import error:', error);
+            throw error;
+          }
+        }}
+      />
+      
+      {/* Export Model Modal */}
+      {selectedModelForExport && (
+        <ExportModelModal
+          open={exportModalOpen}
+          onOpenChange={setExportModalOpen}
+          projectId={selectedModelForExport.projectId}
+          dataModelId={selectedModelForExport.id}
+          onExport={async (format) => {
+            try {
+              const response = await fetch(
+                `/api/projects/${selectedModelForExport.projectId}/models/${selectedModelForExport.id}/export?format=${format}`,
+                { method: 'GET' }
+              );
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to export model');
+              }
+              
+              // Handle the response based on the format
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `data-model-${selectedModelForExport.id}.${format}`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              a.remove();
+            } catch (error) {
+              console.error('Export error:', error);
+              throw error;
+            }
+          }}
+        />
+      )}
+      
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        open={createProjectModalOpen}
+        onOpenChange={setCreateProjectModalOpen}
+      />
+      
+      {/* Create Data Model Modal */}
+      {selectedProjectForModel && (
+        <CreateDataModelModal
+          open={createDataModelModalOpen}
+          onOpenChange={setCreateDataModelModalOpen}
+          projectId={selectedProjectForModel}
         />
       )}
     </div>

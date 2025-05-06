@@ -83,7 +83,7 @@ export async function PATCH(
     }
     
     // Extract fields from the request body
-    const { name, description, color } = body;
+    const { name, description, color, entityIds } = body;
     const referentialId = params.id;
     
     if (!referentialId) {
@@ -165,6 +165,55 @@ export async function PATCH(
     }
     
     console.log('Referential updated successfully:', updatedReferential);
+    
+    // Handle entity associations if entityIds are provided
+    if (Array.isArray(entityIds)) {
+      console.log(`Updating entity associations for referential ${referentialId}`);
+      console.log(`Entity IDs to associate: ${entityIds.join(', ')}`);
+      
+      try {
+        // First, clear any existing associations by setting referential_id to null
+        // for all entities that currently have this referential_id
+        const { error: clearError } = await adminClient
+          .from('entities')
+          .update({ referential_id: null })
+          .eq('referential_id', referentialId);
+          
+        if (clearError) {
+          console.error('Error clearing existing entity associations:', clearError);
+          // Continue anyway to try setting the new associations
+        } else {
+          console.log('Cleared existing entity associations successfully');
+        }
+        
+        // Now set the referential_id for the selected entities
+        if (entityIds.length > 0) {
+          const { error: updateError } = await adminClient
+            .from('entities')
+            .update({ referential_id: referentialId })
+            .in('id', entityIds);
+            
+          if (updateError) {
+            console.error('Error updating entity associations:', updateError);
+            return NextResponse.json(
+              { error: 'Failed to update entity associations', details: updateError.message },
+              { status: 500 }
+            );
+          }
+          
+          console.log(`Successfully associated ${entityIds.length} entities with referential ${referentialId}`);
+        }
+      } catch (associationError: any) {
+        console.error('Error handling entity associations:', associationError);
+        return NextResponse.json(
+          { error: 'Failed to update entity associations', details: associationError.message },
+          { status: 500 }
+        );
+      }
+    } else {
+      console.log('No entityIds provided, skipping entity association updates');
+    }
+    
     return NextResponse.json({ referential: updatedReferential });
     
   } catch (error: any) {

@@ -81,13 +81,28 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
 
   // Handle creating a new referential
   const handleCreateReferential = () => {
+    // Set to null to indicate we're creating a new referential
     setEditingReferential(null);
     setShowModal(true);
   };
 
   // Handle editing a referential
   const handleEditReferential = (referential: Referential) => {
-    setEditingReferential(referential);
+    // Get the entity IDs for this referential
+    const entityIds = entities
+      .filter(entity => entity.referential_id === referential.id)
+      .map(entity => entity.id);
+    
+    // Format the referential object to match what the modal expects
+    const formattedReferential = {
+      id: referential.id,
+      name: referential.name,
+      description: referential.description || '',
+      color: referential.color,
+      entityIds: entityIds
+    };
+    
+    setEditingReferential(formattedReferential as any);
     setShowModal(true);
   };
 
@@ -119,7 +134,7 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
         ? `/api/referentials/${editingReferential!.id}`
         : '/api/referentials';
       
-      const method = isEditing ? 'PUT' : 'POST';
+      const method = isEditing ? 'PATCH' : 'POST';
       
       // Add the data model ID if creating a new referential
       const dataToSend = {
@@ -143,12 +158,40 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
       
       // Update the referentials list
       if (isEditing) {
+        // Calculate the new entity count based on the entityIds in the form data
+        const newEntityCount = referentialData.entityIds ? referentialData.entityIds.length : 0;
+        
+        // Get the entity objects for the selected entity IDs
+        const selectedEntities = referentialData.entityIds
+          ? entities.filter(entity => referentialData.entityIds.includes(entity.id))
+          : [];
+        
+        console.log(`Updating referential ${editingReferential!.id} with ${newEntityCount} entities`);
+        
         setReferentials(prev => prev.map(ref => 
-          ref.id === editingReferential!.id ? { ...savedData.referential, entity_count: ref.entity_count, entities: ref.entities } : ref
+          ref.id === editingReferential!.id 
+            ? { 
+                ...savedData.referential, 
+                entity_count: newEntityCount, 
+                entities: selectedEntities.map(e => ({ id: e.id, name: e.name }))
+              } 
+            : ref
         ));
       } else {
         // Add the new referential to the list
-        setReferentials(prev => [...prev, { ...savedData.referential, entity_count: 0, entities: [] }]);
+        const newEntityCount = referentialData.entityIds ? referentialData.entityIds.length : 0;
+        const selectedEntities = referentialData.entityIds
+          ? entities.filter(entity => referentialData.entityIds.includes(entity.id))
+          : [];
+        
+        setReferentials(prev => [
+          ...prev, 
+          { 
+            ...savedData.referential, 
+            entity_count: newEntityCount, 
+            entities: selectedEntities.map(e => ({ id: e.id, name: e.name }))
+          }
+        ]);
       }
       
       setShowModal(false);
@@ -285,9 +328,9 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
       {/* Referential Modal for creating/editing */}
       <ReferentialModal
         open={showModal}
-        onClose={() => setShowModal(false)}
+        onOpenChange={setShowModal}
         onSave={handleSaveReferential}
-        editingReferential={editingReferential}
+        editingReferential={editingReferential ? editingReferential : undefined}
         dataModelId={dataModelId}
         entities={entities}
         referentials={referentials}

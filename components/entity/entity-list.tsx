@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronRightIcon, EyeIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter, useParams } from "next/navigation";
+import RuleTooltip from "./rule-tooltip";
 
 interface Entity {
   id: string;
@@ -126,15 +127,17 @@ export default function EntityList({
                 </span>
               </td>
               <td className="px-4 py-3 text-center">
-                <span className="px-2 py-1 bg-orange-900/30 text-orange-400 rounded-md text-sm min-w-[24px] inline-flex items-center justify-center">
-                  {ruleCountsLoading?.[entity.id] ? <TableSpinner /> : (
-                    // Debug and display rule count
-                    (() => {
-                      console.log('Rule count for', entity.id, '=', ruleCounts[entity.id]);
-                      return ruleCounts[entity.id] || 0;
-                    })()
-                  )}
-                </span>
+                <RuleTooltip entityId={entity.id} projectId={projectId} dataModelId={modelId}>
+                  <span className="px-2 py-1 bg-orange-900/30 text-orange-400 rounded-md text-sm min-w-[24px] inline-flex items-center justify-center cursor-help">
+                    {ruleCountsLoading?.[entity.id] ? <TableSpinner /> : (
+                      // Debug and display rule count
+                      (() => {
+                        console.log('Rule count for', entity.id, '=', ruleCounts[entity.id]);
+                        return ruleCounts[entity.id] || 0;
+                      })()
+                    )}
+                  </span>
+                </RuleTooltip>
               </td>
               <td className="px-4 py-3 text-right text-sm text-gray-400">
                 {formatDistanceToNow(new Date(entity.updated_at), { addSuffix: true })}

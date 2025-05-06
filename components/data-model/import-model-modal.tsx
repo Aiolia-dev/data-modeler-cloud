@@ -148,7 +148,7 @@ export const ImportModelModal: React.FC<ImportModelModalProps> = ({
             <Button 
               onClick={handleImport}
               disabled={!selectedProjectId || !selectedFile || isLoading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
             >
               {isLoading ? (
                 <>

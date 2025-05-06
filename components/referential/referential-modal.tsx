@@ -97,6 +97,10 @@ export function ReferentialModal({
           setSelectedEntities([])
         }
         
+        console.log('Editing referential:', editingReferential)
+        console.log('Selected entities:', selectedEntities)
+        console.log('Entity IDs in form data:', editingReferential.entityIds || [])
+        
         // When editing, available entities should include:
         // 1. Entities that don't belong to any referential
         // 2. Entities that belong to the current referential being edited
@@ -167,11 +171,21 @@ export function ReferentialModal({
   // Handle adding an entity to the selection
   const handleSelectEntity = (entity: Entity) => {
     setSelectedEntities(prev => [...prev, entity])
+    // Also update the entityIds in formData
+    setFormData(prev => ({
+      ...prev,
+      entityIds: [...prev.entityIds, entity.id]
+    }))
   }
 
   // Handle removing an entity from the selection
   const handleRemoveEntity = (entityId: string) => {
     setSelectedEntities(prev => prev.filter(entity => entity.id !== entityId))
+    // Also update the entityIds in formData
+    setFormData(prev => ({
+      ...prev,
+      entityIds: prev.entityIds.filter(id => id !== entityId)
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,8 +193,10 @@ export function ReferentialModal({
     setIsSubmitting(true)
     
     try {
+      console.log('Submitting referential with data:', formData)
       await onSave(formData, isEditing)
-      // Form will be reset when modal closes via the useEffect
+      // Explicitly close the modal after successful save
+      onOpenChange(false)
     } catch (error) {
       console.error("Error saving referential:", error)
     } finally {
@@ -278,7 +294,11 @@ export function ReferentialModal({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               {isSubmitting ? "Saving..." : isEditing ? "Update Referential" : "Save Referential"}
             </Button>
           </DialogFooter>
