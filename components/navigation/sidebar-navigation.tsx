@@ -13,9 +13,9 @@ import { DeleteProjectModal } from "@/components/project/delete-project-modal";
 import { RenameDataModelModal } from "@/components/data-model/rename-data-model-modal";
 import { DeleteDataModelModal } from "@/components/data-model/delete-data-model-modal";
 import { ImportModelModal } from "@/components/data-model/import-model-modal";
-import { ExportModelModal, ExportFormat } from "@/components/data-model/export-model-modal";
-import { exportDataModel } from "@/utils/export-utils";
-import { DataModelModal } from "@/components/data-model/data-model-modal";
+import { ExportModelModal } from "@/components/data-model/export-model-modal";
+import { CreateProjectModal } from "@/components/project/create-project-modal";
+import { CreateDataModelModal } from "@/components/data-model/create-data-model-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,24 +71,26 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
   
   // State for data model modals
   const [renameDataModelModalOpen, setRenameDataModelModalOpen] = useState(false);
-  const [dataModelToRename, setDataModelToRename] = useState<DataModel | null>(null);
+  const [dataModelToRename, setDataModelToRename] = useState<{id: string, name: string, projectId: string} | null>(null);
   
   const [deleteDataModelModalOpen, setDeleteDataModelModalOpen] = useState(false);
-  const [dataModelToDelete, setDataModelToDelete] = useState<DataModel | null>(null);
+  const [dataModelToDelete, setDataModelToDelete] = useState<{id: string, name: string, projectId: string} | null>(null);
   
+  // State for import/export modals
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [selectedModelForExport, setSelectedModelForExport] = useState<{id: string, projectId: string} | null>(null);
+  
+  // State for create project modal
+  const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
+  
+  // State for create data model modal
+  const [createDataModelModalOpen, setCreateDataModelModalOpen] = useState(false);
+  const [selectedProjectForModel, setSelectedProjectForModel] = useState<string>("");
+  
+  // For backward compatibility
   const [importModelModalOpen, setImportModelModalOpen] = useState(false);
-  const [importModelProjectId, setImportModelProjectId] = useState<string | null>(null);
-  
   const [exportModelModalOpen, setExportModelModalOpen] = useState(false);
-  const [exportModelData, setExportModelData] = useState<{projectId: string, modelId: string, modelName: string} | null>(null);
-  
-  const [newDataModelModalOpen, setNewDataModelModalOpen] = useState(false);
-  const [newDataModelProjectId, setNewDataModelProjectId] = useState<string | null>(null);
-
-  const handleNewDataModelClick = (projectId: string) => {
-    setNewDataModelProjectId(projectId);
-    setNewDataModelModalOpen(true);
-  };
 
   // Check if current user is a superuser
   useEffect(() => {
@@ -414,7 +416,10 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
                       {/* Add new data model button */}
                       <li>
                         <button 
-                          onClick={() => handleNewDataModelClick(project.id)}
+                          onClick={() => {
+                            setSelectedProjectForModel(project.id);
+                            setCreateDataModelModalOpen(true);
+                          }}
                           className="flex items-center py-1.5 px-2 text-sm text-gray-400 hover:bg-gray-800/50 rounded-md w-full text-left"
                         >
                           <PlusIcon size={14} className="mr-2 flex-shrink-0" />
@@ -432,8 +437,8 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
       
       {/* New Project button at bottom */}
       <div className="p-3 border-t border-gray-800 space-y-2">
-        <Link 
-          href="/protected/projects/new"
+        <button
+          onClick={() => setCreateProjectModalOpen(true)}
           className={cn(
             "flex items-center justify-center w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
             !isCollapsed && "justify-start"
@@ -441,11 +446,11 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
         >
           <PlusIcon size={16} className="mr-2" />
           {!isCollapsed && "New Project"}
-        </Link>
+        </button>
         
         {/* Import Model Button */}
         <button
-          onClick={() => setIsImportModalOpen(true)}
+          onClick={() => setImportModalOpen(true)}
           className={cn(
             "flex items-center justify-center w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
             !isCollapsed && "justify-start"
@@ -458,13 +463,11 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
         {/* Export Model Button */}
         <button
           onClick={() => {
-            // If we have a current model ID, use that for export
             if (currentModelId) {
-              setSelectedModelForExport(currentModelId);
-              setIsExportModalOpen(true);
+              setSelectedModelForExport({id: currentModelId, projectId: currentProjectId});
+              setExportModalOpen(true);
             } else {
-              // Otherwise just open the modal and let the user select
-              setIsExportModalOpen(true);
+              setExportModalOpen(true);
             }
           }}
           className={cn(
@@ -599,28 +602,54 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
       />
       
       {/* Export Model Modal */}
-      <ExportModelModal
-        open={exportModelModalOpen}
-        onOpenChange={setExportModelModalOpen}
-        onExport={async (format) => {
-          try {
-            if (exportModelData) {
-              await exportDataModel(exportModelData.modelId, format);
+      {selectedModelForExport && (
+        <ExportModelModal
+          open={exportModalOpen}
+          onOpenChange={setExportModalOpen}
+          projectId={selectedModelForExport.projectId}
+          dataModelId={selectedModelForExport.id}
+          onExport={async (format) => {
+            try {
+              const response = await fetch(
+                `/api/projects/${selectedModelForExport.projectId}/models/${selectedModelForExport.id}/export?format=${format}`,
+                { method: 'GET' }
+              );
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to export model');
+              }
+              
+              // Handle the response based on the format
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `data-model-${selectedModelForExport.id}.${format}`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              a.remove();
+            } catch (error) {
+              console.error('Export error:', error);
+              throw error;
             }
-          } catch (error) {
-            console.error('Error exporting model:', error);
-          }
-        }}
-        projectId={exportModelData?.projectId || currentProjectId || ''}
-        dataModelId={exportModelData?.modelId || ''}
+          }}
+        />
+      )}
+      
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        open={createProjectModalOpen}
+        onOpenChange={setCreateProjectModalOpen}
       />
       
-      {/* New Data Model Modal */}
-      {newDataModelProjectId && (
-        <DataModelModal
-          open={newDataModelModalOpen}
-          onOpenChange={setNewDataModelModalOpen}
-          projectId={newDataModelProjectId}
+      {/* Create Data Model Modal */}
+      {selectedProjectForModel && (
+        <CreateDataModelModal
+          open={createDataModelModalOpen}
+          onOpenChange={setCreateDataModelModalOpen}
+          projectId={selectedProjectForModel}
         />
       )}
     </div>
