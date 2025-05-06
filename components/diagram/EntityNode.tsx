@@ -117,25 +117,39 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
             // Count rules per attribute
             const rulesByAttribute: Record<string, number> = {};
             
-            // Process each rule to see which attributes it affects
+            // First, check for rules that directly reference attributes by ID
             rulesData.forEach((rule: any) => {
+              if (rule.attribute_id) {
+                rulesByAttribute[rule.attribute_id] = (rulesByAttribute[rule.attribute_id] || 0) + 1;
+              }
+            });
+            
+            // Then, process rules that mention attributes in their expressions
+            rulesData.forEach((rule: any) => {
+              // Skip rules that already have an attribute_id to avoid double counting
+              if (rule.attribute_id) return;
+              
               // Extract attribute names from rule expressions
-              // This is a simplified approach - in a real implementation, you would parse the rule expressions properly
               const attributeMatches = [...(rule.condition_expression || '').matchAll(/\b([A-Za-z0-9_]+)\b/g)];
               
-              // Count each attribute mention
+              // For each attribute name match, find the corresponding attribute ID
               attributeMatches.forEach(match => {
                 const attrName = match[1];
-                // Check if this is actually an attribute name in this entity
-                const isAttribute = data.attributes.some(attr => 
+                
+                // Find the attribute with this name
+                const matchingAttr = data.attributes.find(attr => 
                   attr.name.toLowerCase() === attrName.toLowerCase()
                 );
                 
-                if (isAttribute) {
-                  rulesByAttribute[attrName] = (rulesByAttribute[attrName] || 0) + 1;
+                // If we found a matching attribute, increment its rule count
+                if (matchingAttr) {
+                  rulesByAttribute[matchingAttr.id] = (rulesByAttribute[matchingAttr.id] || 0) + 1;
                 }
               });
             });
+            
+            // Log the rule counts for debugging
+            console.log('Rules by attribute ID:', rulesByAttribute);
             
             setAttributeRules(rulesByAttribute);
           }
@@ -320,7 +334,7 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                     // Only show tooltip if the entity is selected
                     if (selected) {
                       // Get actual rule count for this attribute
-                      const ruleCount = attributeRules[attr.name] || 0;
+                      const ruleCount = attributeRules[attr.id] || 0;
                       
                       // Create enhanced attribute data for the tooltip with actual data
                       const enhancedAttr: AttributeData = {
