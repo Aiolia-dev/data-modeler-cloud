@@ -466,7 +466,11 @@ export function EntityModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSaving}>
+            <Button 
+              type="submit" 
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               {isSaving ? "Saving..." : isEditing ? "Update Entity" : "Create Entity"}
             </Button>
           </DialogFooter>

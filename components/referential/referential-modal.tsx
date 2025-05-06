@@ -281,7 +281,11 @@ export function ReferentialModal({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               {isSubmitting ? "Saving..." : isEditing ? "Update Referential" : "Save Referential"}
             </Button>
           </DialogFooter>
