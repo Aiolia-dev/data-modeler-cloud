@@ -129,7 +129,7 @@ export default async function ProjectPage({ params: paramsInput }: { params: { i
               key={model.id}
               className="group"
             >
-              <div className="border rounded-lg p-6 h-full flex flex-col hover:border-primary hover:shadow-md transition-all">
+              <div className="border rounded-lg p-6 h-full flex flex-col hover:border-primary hover:shadow-md transition-all bg-[#111827]">
                 <h3 className="text-xl font-medium mb-2 group-hover:text-primary">{model.name}</h3>
                 {model.description && (
                   <p className="text-muted-foreground mb-4 flex-grow">{model.description}</p>
@@ -143,7 +143,7 @@ export default async function ProjectPage({ params: paramsInput }: { params: { i
           ))}
           
           <Link href={`/protected/projects/${params.id}/models/new`} className="group">
-            <div className="border border-dashed rounded-lg p-6 h-full flex flex-col items-center justify-center hover:border-primary hover:shadow-md transition-all">
+            <div className="border border-dashed rounded-lg p-6 h-full flex flex-col items-center justify-center hover:border-primary hover:shadow-md transition-all bg-[#111827]">
               <div className="bg-muted rounded-full p-4 mb-4">
                 <PlusIcon size={24} className="text-muted-foreground group-hover:text-primary" />
               </div>
