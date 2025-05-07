@@ -754,44 +754,21 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
             onSave={async (foreignKeyData) => {
               console.log('Creating new foreign key:', foreignKeyData);
               try {
-                // Get current attributes first
-                const getResponse = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities/${data.id}/attributes`);
-                if (!getResponse.ok) {
-                  throw new Error('Failed to fetch current attributes');
-                }
-                
-                const { attributes: currentAttributes } = await getResponse.json();
-                
-                // Prepare the new foreign key in the correct format
-                // The API endpoint doesn't include referenced_entity_id in its standard fields
-                // We need to explicitly add it to the attributes object
-                const newForeignKeyData = {
-                  name: foreignKeyData.name,
-                  description: foreignKeyData.description,
-                  data_type: foreignKeyData.dataType,
-                  is_required: foreignKeyData.isRequired,
-                  is_unique: false,
-                  is_primary_key: false,
-                  is_foreign_key: true,
-                  referenced_entity_id: foreignKeyData.referencedEntityId, // This is the critical field for relationships
-                };
-                
-                console.log('Foreign key data to be saved:', {
-                  newForeignKeyData,
-                  originalData: foreignKeyData
-                });
-                
-                // Add the new foreign key to the existing attributes
-                const updatedAttributes = [...currentAttributes, newForeignKeyData];
-                
-                // Call the API to update the attributes array
-                const response = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities/${data.id}/attributes`, {
-                  method: 'PUT',
+                // Instead of using the PUT endpoint for attributes, we'll use the dedicated
+                // POST endpoint for creating attributes which also handles relationships
+                const response = await fetch('/api/attributes', {
+                  method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    attributes: updatedAttributes
+                    name: foreignKeyData.name,
+                    description: foreignKeyData.description,
+                    dataType: 'integer', // Foreign keys are typically integers
+                    entityId: data.id,
+                    isRequired: foreignKeyData.isRequired,
+                    isForeignKey: true,
+                    referencedEntityId: foreignKeyData.referencedEntityId,
                   }),
                 });
                 
@@ -800,12 +777,12 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                   throw new Error(errorData.error || 'Failed to create foreign key');
                 }
                 
-                // Get the updated attributes from the response
-                const { attributes: newAttributes } = await response.json();
-                console.log('New foreign key created:', newAttributes);
+                // Get the newly created attribute from the response
+                const responseData = await response.json();
+                console.log('New foreign key created:', responseData);
                 
-                // Find the newly created foreign key (should be the last one)
-                const newForeignKey = newAttributes[newAttributes.length - 1];
+                // The attribute should be in the response
+                const newForeignKey = responseData.attribute;
                 
                 // Update the node data with all attributes from the response
                 const nodeUpdatedAttributes = data.attributes.map(attr => ({
