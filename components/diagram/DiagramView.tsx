@@ -713,11 +713,72 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
     }
   }, [referentialColors, nodes.length, setNodes]);
   
-  // Listen for attribute updates from QuickEditAttributeModal
+  // Function to fetch relationships and update edges
+  const fetchRelationships = useCallback(async () => {
+    try {
+      console.log('Fetching relationships for data model:', dataModelId);
+      const relResp = await fetch(`/api/relationships?dataModelId=${dataModelId}`);
+      if (!relResp.ok) {
+        console.error('Failed to fetch relationships:', relResp.statusText);
+        return;
+      }
+      const relData = await relResp.json();
+      const relationships = Array.isArray(relData.relationships) ? relData.relationships : [];
+      
+      console.log('Fetched relationships:', relationships.length, relationships);
+      
+      // Map relationships to edges
+      const diagramEdges = relationships
+        .map((rel: any) => {
+          const sourceNode = nodes.find(node => node.id === rel.sourceEntityId);
+          const targetNode = nodes.find(node => node.id === rel.targetEntityId);
+          
+          if (!sourceNode || !targetNode) {
+            console.warn(`Could not find nodes for relationship: ${rel.id} (${rel.sourceEntityId} → ${rel.targetEntityId})`);
+            return null;
+          }
+          
+          const anchorPositions = determineAnchorPositions(sourceNode, targetNode);
+          const edgeId = `edge-${rel.sourceEntityId}-${rel.targetEntityId}-${rel.id}`;
+          
+          console.log(`Creating edge: ${edgeId} (${sourceNode.data.name} → ${targetNode.data.name})`);
+          
+          return {
+            id: edgeId,
+            source: rel.sourceEntityId,
+            target: rel.targetEntityId,
+            type: 'relationshipEdge',
+            sourceHandle: anchorPositions.sourcePosition,
+            targetHandle: anchorPositions.targetPosition,
+            data: {
+              sourceCardinality: rel.sourceCardinality || '0..N',
+              targetCardinality: rel.targetCardinality || '1..1',
+              label: rel.name,
+              sourcePosition: anchorPositions.sourcePosition,
+              targetPosition: anchorPositions.targetPosition,
+              sourceEntityName: sourceNode.data.name,
+              targetEntityName: targetNode.data.name,
+            },
+          } as Edge;
+        })
+        .filter((edge: Edge | null): edge is Edge => edge !== null);
+      
+      // Force a complete replacement of edges rather than a merge
+      setEdges(diagramEdges);
+      console.log('Relationships updated successfully:', diagramEdges.length, diagramEdges);
+    } catch (err) {
+      console.error('Error fetching relationships:', err);
+    }
+  }, [dataModelId, nodes, determineAnchorPositions]);
+
+  // Listen for attribute updates from QuickEditAttributeModal or Foreign Key creation
   useEffect(() => {
     const handleAttributeUpdated = (event: CustomEvent<{entityId: string, attributes: any[]}>) => {
       console.log('Attribute updated, updating node:', event.detail);
       const { entityId, attributes } = event.detail;
+      
+      // Check if any of the attributes is a foreign key
+      const hasForeignKey = attributes.some(attr => attr.isForeignKey || attr.is_foreign_key);
       
       // Update the node with the new attributes
       setNodes(currentNodes => {
@@ -735,6 +796,23 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
           return node;
         });
       });
+      
+      // If a foreign key was created or updated, refresh the relationships
+      if (hasForeignKey) {
+        console.log('Foreign key detected, refreshing relationships');
+        // First, ensure the node update is complete
+        setNodes(currentNodes => {
+          // This is just to ensure the state update has been processed
+          console.log('Node update complete, preparing to fetch relationships');
+          // Schedule relationship fetch after the state update
+          setTimeout(() => {
+            console.log('Executing relationship refresh');
+            fetchRelationships();
+          }, 50);
+          // Return the current nodes unchanged
+          return currentNodes;
+        });
+      }
     };
     
     // Add event listener for attribute updates
@@ -744,7 +822,7 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
     return () => {
       document.removeEventListener('attribute-updated', handleAttributeUpdated as EventListener);
     };
-  }, [setNodes]);
+  }, [setNodes, fetchRelationships]);
   
   // Define node context menu options
   const nodeContextMenuOptions = React.useMemo(() => [

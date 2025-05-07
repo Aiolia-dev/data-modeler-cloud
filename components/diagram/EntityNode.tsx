@@ -777,12 +777,19 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                   throw new Error(errorData.error || 'Failed to create foreign key');
                 }
                 
-                // Get the newly created attribute from the response
+                // Get the updated attributes from the response
                 const responseData = await response.json();
-                console.log('New foreign key created:', responseData);
+                const newAttributes = responseData.attributes || [];
+                console.log('New foreign key created:', newAttributes);
                 
-                // The attribute should be in the response
-                const newForeignKey = responseData.attribute;
+                // Find the newly created foreign key (should be the last one)
+                const newForeignKey = newAttributes.length > 0 ? newAttributes[newAttributes.length - 1] : null;
+                
+                // If we couldn't get the new foreign key from the response, don't proceed with UI updates
+                if (!newForeignKey) {
+                  console.warn('Foreign key was created but response did not contain the expected data');
+                  return;
+                }
                 
                 // Update the node data with all attributes from the response
                 const nodeUpdatedAttributes = data.attributes.map(attr => ({
