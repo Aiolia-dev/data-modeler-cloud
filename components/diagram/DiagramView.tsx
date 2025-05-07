@@ -713,6 +713,39 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
     }
   }, [referentialColors, nodes.length, setNodes]);
   
+  // Listen for attribute updates from QuickEditAttributeModal
+  useEffect(() => {
+    const handleAttributeUpdated = (event: CustomEvent<{entityId: string, attributes: any[]}>) => {
+      console.log('Attribute updated, updating node:', event.detail);
+      const { entityId, attributes } = event.detail;
+      
+      // Update the node with the new attributes
+      setNodes(currentNodes => {
+        return currentNodes.map(node => {
+          if (node.id === entityId) {
+            // Create a new node with updated attributes
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                attributes: attributes
+              }
+            };
+          }
+          return node;
+        });
+      });
+    };
+    
+    // Add event listener for attribute updates
+    document.addEventListener('attribute-updated', handleAttributeUpdated as EventListener);
+    
+    // Clean up the event listener when the component unmounts
+    return () => {
+      document.removeEventListener('attribute-updated', handleAttributeUpdated as EventListener);
+    };
+  }, [setNodes]);
+  
   // Define node context menu options
   const nodeContextMenuOptions = React.useMemo(() => [
     {
