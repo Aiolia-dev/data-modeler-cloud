@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PermissionButton } from "@/components/ui/permission-button";
+import { usePermissions } from "@/context/permission-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeftIcon, SaveIcon, Trash2Icon, PlusIcon } from "lucide-react";
@@ -169,10 +170,46 @@ const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [relationshipCount, setRelationshipCount] = useState(0);
   const [ruleCount, setRuleCount] = useState(0);
   
-  // Extract data model ID directly from entity
-  // The data_model_id field should contain the actual model ID
-  const dataModelId = entity.data_model_id;
+  // Extract project ID directly from URL to ensure we have the correct one
+  const extractProjectIdFromUrl = () => {
+    if (typeof window !== 'undefined') {
+      // First try the full project/model pattern
+      const fullUrlMatch = window.location.pathname.match(/\/projects\/([\w-]+)\/models\/[\w-]+/);
+      if (fullUrlMatch) {
+        return fullUrlMatch[1];
+      }
+      
+      // Fall back to the simpler project-only pattern
+      const simpleUrlMatch = window.location.pathname.match(/\/projects\/([\w-]+)/);
+      if (simpleUrlMatch) {
+        return simpleUrlMatch[1];
+      }
+    }
+    return null;
+  };
   
+  // Get the project ID directly from the URL for permission checks
+  const urlProjectId = extractProjectIdFromUrl();
+  
+  // Get permission context to check if user can edit entities
+  const { hasPermission } = usePermissions();
+  
+  // Check if the user has edit permission using the extracted project ID
+  const canEditEntity = hasPermission('edit', urlProjectId || undefined);
+  
+  // State for project and data model IDs
+  const [dataModelId, setDataModelId] = useState('');
+  
+  // Extract data model ID directly from entity and use URL project ID
+  useEffect(() => {
+    if (entity && entity.data_model_id) {
+      setDataModelId(entity.data_model_id);
+    }
+  }, [entity]);
+  
+  // Use the URL project ID for all operations
+  const projectId = urlProjectId || '';
+
   // Fetch referentials if not provided
   useEffect(() => {
     if (referentials?.length) {
@@ -198,9 +235,8 @@ const [isEditingDescription, setIsEditingDescription] = useState(false);
     fetchReferentials();
   }, [dataModelId, referentials]);
   
-  // For project ID, we need to extract it from the URL or context
-  // This is a temporary solution - in a real app, you'd get this from context or props
-  const projectId = window.location.pathname.split('/')[3] || '';
+  // We already have projectId from the URL extraction above
+  // No need to extract it again
 
   // Convert DB attributes to form format and update counts
   useEffect(() => {
@@ -430,27 +466,32 @@ const [isEditingDescription, setIsEditingDescription] = useState(false);
             <ArrowLeftIcon size={16} />
           </Button>
           {isEditingName ? (
-            <input
-              className="text-2xl font-bold bg-transparent border-b border-primary focus:outline-none focus:border-blue-500 w-64"
-              value={editedEntity.name}
-              autoFocus
-              disabled={isSaving}
-              onChange={e => setEditedEntity({ ...editedEntity, name: e.target.value })}
-              onBlur={handleNameBlur}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-            />
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={editedEntity.name}
+                onChange={(e) => setEditedEntity({ ...editedEntity, name: e.target.value })}
+                onBlur={handleNameBlur}
+                onKeyDown={(e) => e.key === 'Enter' && handleNameBlur()}
+                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
           ) : (
-            <h2
-              className="text-2xl font-bold cursor-pointer hover:underline"
-              title="Click to edit name"
-              onClick={() => setIsEditingName(true)}
-            >
-              {editedEntity.name}
-            </h2>
+            <div className="relative group">
+              <h1 
+                className={`text-xl font-semibold ${canEditEntity ? 'cursor-pointer hover:text-blue-400 transition-colors' : 'cursor-not-allowed'}`}
+                onClick={() => canEditEntity && setIsEditingName(true)}
+                title={canEditEntity ? 'Click to edit entity name' : "You don't have permission to edit this entity"}
+              >
+                {editedEntity.name}
+              </h1>
+              {!canEditEntity && (
+                <div className="absolute hidden group-hover:block bg-gray-800 text-gray-300 text-xs p-2 rounded shadow-lg -bottom-8 left-0 whitespace-nowrap">
+                  You don't have permission to edit this entity
+                </div>
+              )}
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2">

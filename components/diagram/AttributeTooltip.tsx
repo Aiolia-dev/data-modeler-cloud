@@ -3,7 +3,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileTextIcon, GitBranchIcon, ArrowRightIcon } from 'lucide-react';
+import { FileTextIcon, GitBranchIcon, ArrowRightIcon, PenIcon } from 'lucide-react';
 
 export interface AttributeData {
   id: string;
@@ -30,6 +30,7 @@ interface AttributeTooltipProps {
   onViewDetails?: (attributeId: string) => void;
   onViewRelations?: (attributeId: string) => void;
   onGoToReferencedEntity?: (entityName: string) => void;
+  onQuickEdit?: (attributeId: string) => void;
 }
 
 export const AttributeTooltip: React.FC<AttributeTooltipProps> = ({
@@ -38,7 +39,8 @@ export const AttributeTooltip: React.FC<AttributeTooltipProps> = ({
   position,
   onViewDetails,
   onViewRelations,
-  onGoToReferencedEntity
+  onGoToReferencedEntity,
+  onQuickEdit
 }) => {
   // Normalize attribute properties
   const isPrimaryKey = attribute.isPrimaryKey || attribute.is_primary_key;
@@ -150,6 +152,16 @@ export const AttributeTooltip: React.FC<AttributeTooltipProps> = ({
       
       {/* Quick Actions */}
       <div className="flex gap-2 mt-4">
+        {/* Quick Edit Button */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex-1 text-xs text-green-400 border-green-800"
+          onClick={() => onQuickEdit?.(attribute.id)}
+        >
+          <PenIcon className="h-3 w-3 mr-1" />
+          Quick Edit
+        </Button>
         
         {isForeignKey && attribute.referencedEntity && (
           <Button 

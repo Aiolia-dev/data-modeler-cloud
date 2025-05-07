@@ -1,10 +1,28 @@
 "use client";
 
-import React, { memo, useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
+import ReactDOM from 'react-dom';
 import { Badge } from '@/components/ui/badge';
-import { AttributeTooltip, AttributeData } from './AttributeTooltip';
 import { useSettings } from '@/contexts/settings-context';
+import { Trash2, Pen, Copy } from 'lucide-react';
+import { AttributeTooltip } from './AttributeTooltip';
+import QuickEditAttributeModal from './QuickEditAttributeModal';
+
+// Define types if they're not imported from external files
+interface AttributeData {
+  id: string;
+  name: string;
+  dataType: string;
+  isPrimaryKey?: boolean;
+  isForeignKey?: boolean;
+  isRequired?: boolean;
+  isUnique?: boolean;
+  description?: string;
+  referencedEntity?: string;
+  rules?: number;
+  referencedBy?: number;
+}
 
 interface EntityNodeData {
   id: string;
@@ -13,7 +31,7 @@ interface EntityNodeData {
   attributes: Array<{
     id: string;
     name: string;
-    dataType: string;
+    dataType?: string;
     data_type?: string;
     description?: string;
     isRequired?: boolean;
@@ -27,16 +45,12 @@ interface EntityNodeData {
     referencedEntity?: string;
   }>;
   undimmedHandles?: string[];
-
   dimmed?: boolean;
   entity_type?: 'standard' | 'join';
   join_entities?: string[];
   referential_id?: string | null;
   referential_color?: string;
 }
-
-import ReactDOM from 'react-dom';
-import { Trash2, Pen, Copy } from 'lucide-react';
 
 const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => {
   const dimmed = data.dimmed;
@@ -99,10 +113,12 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
     };
   }, [menuOpen]);
 
-  // State for attribute tooltip
+  // State for attribute tooltip and quick edit modal
   const [hoveredAttribute, setHoveredAttribute] = useState<AttributeData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{x: number, y: number} | null>(null);
   const [attributeRules, setAttributeRules] = useState<Record<string, number>>({});
+  const [selectedAttribute, setSelectedAttribute] = useState<AttributeData | null>(null);
+  const [showQuickEditModal, setShowQuickEditModal] = useState(false);
   
   // Fetch rules for this entity when selected
   React.useEffect(() => {
@@ -362,6 +378,31 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                       setHoveredAttribute(null);
                     }
                   }}
+                  onClick={() => {
+                    // Only open edit modal if the entity is selected
+                    if (selected) {
+                      // Get actual rule count for this attribute
+                      const ruleCount = attributeRules[attr.id] || 0;
+                      
+                      // Create enhanced attribute data for the modal
+                      const enhancedAttr: AttributeData = {
+                        id: attr.id,
+                        name: attr.name,
+                        dataType: attr.dataType || attr.data_type || '',
+                        isPrimaryKey: isPrimaryKey,
+                        isForeignKey: isForeignKey,
+                        isRequired: isRequired,
+                        isUnique: isUnique,
+                        referencedEntity: attr.referencedEntity,
+                        description: attr.description || '',
+                        rules: ruleCount
+                      };
+                      
+                      // Set the selected attribute and open the modal
+                      setSelectedAttribute(enhancedAttr);
+                      setShowQuickEditModal(true);
+                    }
+                  }}
                 >
                   <div className="flex-1 flex items-center gap-1">
                     {isPrimaryKey && <span className="text-purple-400 text-xs">🔑</span>}
@@ -441,21 +482,118 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
             attribute={hoveredAttribute}
             entityName={data.name}
             position={tooltipPosition}
-            onViewDetails={(attributeId) => {
+            onViewDetails={(attributeId: string) => {
               console.log('View details for attribute:', attributeId);
               // Navigate to attribute details page
               if (projectId && dataModelId && data.id) {
                 window.location.href = `/protected/projects/${projectId}/models/${dataModelId}/entities/${data.id}/attributes/${attributeId}`;
               }
             }}
-            onViewRelations={(attributeId) => {
+            onViewRelations={(attributeId: string) => {
               console.log('View relations for attribute:', attributeId);
               // This would typically show a modal or navigate to a relations view
             }}
-            onGoToReferencedEntity={(entityName) => {
+            onGoToReferencedEntity={(entityName: string) => {
               console.log('Go to referenced entity:', entityName);
               // Find the entity by name and select it
               // This would typically involve finding the node ID and selecting it in the diagram
+            }}
+            onQuickEdit={(attributeId: string) => {
+              console.log('Quick edit attribute:', attributeId);
+              // Find the attribute by ID and open the quick edit modal
+              const attr = data.attributes.find(a => a.id === attributeId);
+              if (attr) {
+                // Get actual rule count for this attribute
+                const ruleCount = attributeRules[attr.id] || 0;
+                
+                // Create enhanced attribute data for the modal
+                const isPrimaryKey = attr.isPrimaryKey || attr.is_primary_key;
+                const isForeignKey = attr.isForeignKey || attr.is_foreign_key;
+                const isRequired = attr.isRequired || attr.is_required;
+                const isUnique = attr.isUnique || attr.is_unique;
+                
+                const enhancedAttr: AttributeData = {
+                  id: attr.id,
+                  name: attr.name,
+                  dataType: attr.dataType || attr.data_type || '',
+                  isPrimaryKey: isPrimaryKey,
+                  isForeignKey: isForeignKey,
+                  isRequired: isRequired,
+                  isUnique: isUnique,
+                  referencedEntity: attr.referencedEntity,
+                  description: attr.description || '',
+                  rules: ruleCount
+                };
+                
+                // Set the selected attribute and open the modal
+                setSelectedAttribute(enhancedAttr);
+                setShowQuickEditModal(true);
+              }
+            }}
+          />,
+          document.getElementById('overlay-root') as HTMLElement
+        )}
+        
+        {/* Quick Edit Attribute Modal */}
+        {selected && selectedAttribute && ReactDOM.createPortal(
+          <QuickEditAttributeModal
+            open={showQuickEditModal}
+            onOpenChange={setShowQuickEditModal}
+            attribute={selectedAttribute}
+            entityName={data.name}
+            onSave={async (attributeData) => {
+              console.log('Saving attribute:', attributeData);
+              try {
+                // Call the API to update the attribute
+                const response = await fetch(`/api/attributes/${attributeData.id}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    name: attributeData.name,
+                    description: attributeData.description,
+                    dataType: attributeData.dataType,
+                    isRequired: attributeData.isRequired,
+                    isUnique: attributeData.isUnique,
+                  }),
+                });
+                
+                if (!response.ok) {
+                  throw new Error('Failed to update attribute');
+                }
+                
+                // Update the attribute in the node data
+                const updatedAttributes = data.attributes.map(attr => {
+                  if (attr.id === attributeData.id) {
+                    return {
+                      ...attr,
+                      name: attributeData.name,
+                      description: attributeData.description,
+                      dataType: attributeData.dataType,
+                      isRequired: attributeData.isRequired,
+                      is_required: attributeData.isRequired,
+                      isUnique: attributeData.isUnique,
+                      is_unique: attributeData.isUnique,
+                    };
+                  }
+                  return attr;
+                });
+                
+                // Dispatch a custom event to update the node data
+                const event = new CustomEvent('attribute-updated', {
+                  detail: {
+                    entityId: data.id,
+                    attributes: updatedAttributes,
+                  },
+                });
+                document.dispatchEvent(event);
+                
+                console.log('Attribute updated successfully');
+              } catch (error) {
+                console.error('Error updating attribute:', error);
+                throw error;
+              }
             }}
           />,
           document.getElementById('overlay-root') as HTMLElement

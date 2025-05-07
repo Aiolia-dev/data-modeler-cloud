@@ -26,6 +26,7 @@ import { DiagramSearch } from './DiagramSearch';
 import { Button } from '@/components/ui/button';
 import { BoxSelect, CrosshairIcon, Edit, Eye, EyeOff, Link, MessageSquare, Plus, PlusCircle, RefreshCw, Settings, Share2, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { usePermissions } from '@/context/permission-context';
+import { useViewerCheck } from '@/hooks/use-viewer-check';
 import { CommentModal } from './CommentModal';
 import { CommentData } from './CommentTypes';
 import { CommentNode, Comment, commentsToNodes } from './CommentMarker';
@@ -1018,6 +1019,9 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   // Get permission context to check if user has create permission
   const { hasPermission } = usePermissions();
   
+  // Check if the user is a viewer for this project
+  const isViewer = useViewerCheck(projectId);
+  
   // Check if user has create permission for this project
   const canCreate = useMemo(() => {
     return hasPermission('create', projectId);
@@ -1066,6 +1070,10 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   
   // Settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  
+  // Delete confirmation modal state
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [nodeToDelete, setNodeToDelete] = useState<Node | null>(null);
   
   // Track selected relationship
   const [selectedRelationship, setSelectedRelationship] = useState<{
@@ -1976,6 +1984,25 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
             selectionOnDrag={marqueeMode}
             panOnDrag={!marqueeMode}
             selectionKeyCode={null}
+            // We're handling Delete key ourselves to show a confirmation modal
+            deleteKeyCode={null}
+            onKeyDown={(event) => {
+              // Only handle Delete and Backspace keys
+              if ((event.key === 'Delete' || event.key === 'Backspace') && !isViewer) {
+                // Get selected nodes
+                const selectedNodes = nodes.filter(node => node.selected);
+                
+                // If exactly one node is selected and it's an entity node
+                if (selectedNodes.length === 1 && selectedNodes[0].type === 'entityNode') {
+                  // Prevent default behavior (which just removes the node from the canvas)
+                  event.preventDefault();
+                  
+                  // Set the node to delete and show confirmation modal
+                  setNodeToDelete(selectedNodes[0]);
+                  setShowDeleteConfirmModal(true);
+                }
+              }
+            }}
           >
             <Background color="#666" gap={20} size={1} style={{ backgroundColor: '#000000' }} />
             <Controls showInteractive={false} />

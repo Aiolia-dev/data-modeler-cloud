@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, ChevronRightIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ReferentialModal } from "./referential-modal";
 import { usePermissions } from "@/context/permission-context";
+import { useViewerCheck } from "@/hooks/use-viewer-check";
 import { PermissionButton } from "@/components/ui/permission-button";
 
 interface Referential {
@@ -35,6 +36,8 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
   const [editingReferential, setEditingReferential] = useState<Referential | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const { hasPermission } = usePermissions();
+  // Check if the user is a viewer for this project
+  const isViewer = useViewerCheck(projectId);
 
   // Fetch referentials and entities
   useEffect(() => {
@@ -174,16 +177,17 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Referentials</h2>
-        <PermissionButton 
-          className="bg-blue-600 hover:bg-blue-700"
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-gray-100">Referentials</h2>
+        <PermissionButton
           onClick={handleCreateReferential}
-          action="create"
+          className="bg-blue-600 hover:bg-blue-700"
+          size="sm"
           projectId={projectId}
-          disabledMessage="You need editor or admin permissions to create referentials"
+          action="edit"
+          disabledMessage="You don't have permission to create referentials"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus size={16} className="mr-1" />
           New Referential
         </PermissionButton>
       </div>
@@ -252,20 +256,45 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center space-x-2">
-                      <button
-                        type="button"
-                        className="p-1 hover:bg-gray-700 rounded"
-                        onClick={() => handleEditReferential(referential)}
-                      >
-                        <Edit size={16} className="text-gray-400" />
-                      </button>
-                      <button
-                        type="button"
-                        className="p-1 hover:bg-gray-700 rounded"
-                        onClick={() => setDeleteConfirmation(referential.id)}
-                      >
-                        <Trash2 size={16} className="text-red-400" />
-                      </button>
+                      {!isViewer ? (
+                        <>
+                          <button
+                            type="button"
+                            className="p-1 hover:bg-gray-700 rounded"
+                            onClick={() => handleEditReferential(referential)}
+                            title="Edit referential"
+                          >
+                            <Edit size={16} className="text-gray-400" />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-1 hover:bg-gray-700 rounded"
+                            onClick={() => setDeleteConfirmation(referential.id)}
+                            title="Delete referential"
+                          >
+                            <Trash2 size={16} className="text-red-400" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="p-1 cursor-not-allowed opacity-50"
+                            disabled
+                            title="You don't have permission to edit referentials"
+                          >
+                            <Edit size={16} className="text-gray-400" />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-1 cursor-not-allowed opacity-50"
+                            disabled
+                            title="You don't have permission to delete referentials"
+                          >
+                            <Trash2 size={16} className="text-gray-400" />
+                          </button>
+                        </>
+                      )}
                     </div>
                     
                     {/* Delete confirmation */}
@@ -284,13 +313,16 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
                           >
                             Cancel
                           </Button>
-                          <Button 
+                          <PermissionButton 
                             variant="destructive" 
                             size="sm"
                             onClick={() => handleDeleteReferential(referential.id)}
+                            projectId={projectId}
+                            action="edit"
+                            disabledMessage="You don't have permission to delete referentials"
                           >
                             Delete
-                          </Button>
+                          </PermissionButton>
                         </div>
                       </div>
                     )}
@@ -315,6 +347,7 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
           entityIds: editingReferential.entityIds
         } : undefined}
         dataModelId={dataModelId}
+        projectId={projectId}
         entities={entities}
         referentials={referentials}
       />

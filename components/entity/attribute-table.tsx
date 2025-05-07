@@ -307,16 +307,20 @@ export default function AttributeTable({
                     <td className="px-4 py-3">
                       <div className="group relative">
                         <div 
-                          className="py-1 px-2 rounded cursor-text group-hover:bg-gray-800 text-gray-100 min-h-8 flex items-center"
+                          className={`py-1 px-2 rounded ${!isViewer && !attribute.isPrimaryKey ? 'cursor-text group-hover:bg-gray-800' : 'cursor-not-allowed'} text-gray-100 min-h-8 flex items-center`}
                           onClick={(e) => {
-                            const target = e.currentTarget;
-                            const input = target.nextElementSibling as HTMLInputElement;
-                            if (input && !attribute.isPrimaryKey) {
-                              target.classList.add('hidden');
-                              input.classList.remove('hidden');
-                              input.focus();
+                            // Only allow editing if not a viewer and not a primary key
+                            if (!isViewer && !attribute.isPrimaryKey) {
+                              const target = e.currentTarget;
+                              const input = target.nextElementSibling as HTMLInputElement;
+                              if (input) {
+                                target.classList.add('hidden');
+                                input.classList.remove('hidden');
+                                input.focus();
+                              }
                             }
                           }}
+                          title={isViewer ? "You don't have permission to edit attributes" : attribute.isPrimaryKey ? "Primary key names cannot be edited" : "Click to edit attribute name"}
                         >
                           <div className="flex items-center">
                             {/* Attribute Name */}
@@ -358,7 +362,7 @@ export default function AttributeTable({
                           value={attribute.name}
                           onChange={(e) => handleAttributeChange(index, "name", e.target.value)}
                           className="h-8 py-1 input-white hidden absolute top-0 left-0 w-full z-10"
-                          disabled={attribute.isPrimaryKey}
+                          disabled={isViewer || attribute.isPrimaryKey}
                           onBlur={(e) => {
                             const input = e.currentTarget;
                             const textDisplay = input.previousElementSibling as HTMLDivElement;
@@ -376,6 +380,14 @@ export default function AttributeTable({
                               if (textDisplay) {
                                 // Save the attribute change to the database
                                 handleAttributeChange(index, "name", input.value, true);
+                                input.classList.add('hidden');
+                                textDisplay.classList.remove('hidden');
+                              }
+                            } else if (e.key === 'Escape') {
+                              // Cancel editing without saving
+                              const input = e.currentTarget;
+                              const textDisplay = input.previousElementSibling as HTMLDivElement;
+                              if (textDisplay) {
                                 input.classList.add('hidden');
                                 textDisplay.classList.remove('hidden');
                               }

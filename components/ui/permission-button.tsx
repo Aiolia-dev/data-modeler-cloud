@@ -33,7 +33,7 @@ export function PermissionButton({
   // If still loading, show a disabled button
   if (loading) {
     return (
-      <Button {...props} disabled className="opacity-50 cursor-not-allowed">
+      <Button {...props} disabled className="opacity-70 cursor-not-allowed text-gray-400">
         {children}
       </Button>
     );
@@ -57,7 +57,7 @@ export function PermissionButton({
             <Button 
               {...props} 
               disabled 
-              className="opacity-50 cursor-not-allowed"
+              className="opacity-70 cursor-not-allowed text-gray-400"
             >
               {children}
             </Button>
