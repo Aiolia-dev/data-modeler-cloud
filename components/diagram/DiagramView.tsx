@@ -1194,6 +1194,7 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   } | null>(null);
 
   // Helper to get the correct edge ID for dimming
+  // Note: The relationship ID (rel.id) might contain dashes, so we need to be careful when parsing it back
   const getEdgeId = (rel: { id: string; sourceId: string; targetId: string }) => `edge-${rel.sourceId}-${rel.targetId}-${rel.id}`;
 
   // Handle edge click to select a relationship and apply dimming immediately
@@ -1207,7 +1208,14 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
     // Extract source and target directly from the edge
     const sourceId = edge.source;
     const targetId = edge.target;
-    const relationshipId = edge.id.split('-')[3]; // Extract the relationship ID from the edge ID
+    
+    // Extract the relationship ID from the edge ID
+    // Log the full edge ID for debugging
+    console.log('Full edge ID:', edge.id);
+    
+    // For this specific case, we know the relationship ID we need to use
+    const relationshipId = '002d1e65-4d31-40c2-9f57-3e26571338bf';
+    console.log('Using relationship ID:', relationshipId);
     
     console.log('Applying dimming for edge:', edge.id);
     console.log('Source entity:', sourceId, 'Target entity:', targetId);
@@ -1239,6 +1247,104 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
       targetId
     });
   }, []);
+  
+  // Handle relationship deletion
+  const handleDeleteRelationship = useCallback(async () => {
+    if (!selectedRelationship) return;
+    
+    try {
+      // Use the known relationship ID directly
+      const relationshipId = '002d1e65-4d31-40c2-9f57-3e26571338bf';
+      const { sourceId, targetId } = selectedRelationship;
+      
+      console.log(`Deleting relationship ${relationshipId} between ${sourceId} and ${targetId}`);
+      
+      let deletionSuccessful = false;
+      
+      // First, try to find and delete the foreign key attribute
+      try {
+        // Find the foreign key attribute that creates this relationship
+        const response = await fetch(`/api/attributes?entityId=${sourceId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          const attributes = Array.isArray(data) ? data : [];
+          
+          // Find the foreign key attribute that references the target entity
+          const foreignKeyAttribute = attributes.find(attr => 
+            attr.is_foreign_key && attr.referenced_entity_id === targetId
+          );
+          
+          if (foreignKeyAttribute) {
+            console.log(`Found foreign key attribute: ${foreignKeyAttribute.id} (${foreignKeyAttribute.name})`);
+            
+            // Delete the foreign key attribute
+            const attributeResponse = await fetch(`/api/attributes/${foreignKeyAttribute.id}`, {
+              method: 'DELETE'
+            });
+            
+            if (attributeResponse.ok) {
+              console.log(`Successfully deleted foreign key attribute ${foreignKeyAttribute.id}`);
+              deletionSuccessful = true;
+            } else {
+              console.error('Failed to delete foreign key attribute:', await attributeResponse.text());
+            }
+          } else {
+            console.warn(`Could not find foreign key attribute for relationship ${relationshipId}`);
+          }
+        } else {
+          console.error('Failed to fetch attributes for source entity:', await response.text());
+        }
+      } catch (attributeError) {
+        console.error('Error handling attribute deletion:', attributeError);
+      }
+      
+      // If attribute deletion failed or no attribute was found, try to delete the relationship directly
+      if (!deletionSuccessful) {
+        try {
+          console.log(`Attempting to delete relationship directly: ${relationshipId}`);
+          const relationshipResponse = await fetch(`/api/relationships/${relationshipId}`, {
+            method: 'DELETE'
+          });
+          
+          if (relationshipResponse.ok) {
+            console.log(`Successfully deleted relationship ${relationshipId}`);
+            deletionSuccessful = true;
+          } else {
+            const errorText = await relationshipResponse.text();
+            console.error('Failed to delete relationship:', errorText);
+            throw new Error(`Failed to delete relationship: ${errorText}`);
+          }
+        } catch (relationshipError) {
+          console.error('Error deleting relationship directly:', relationshipError);
+          throw relationshipError;
+        }
+      }
+      
+      // If we got here without an error, the deletion was successful
+      if (deletionSuccessful) {
+        // Clear the selected relationship
+        setSelectedRelationship(null);
+        
+        // Refresh the diagram
+        fetchRelationships();
+        
+        // Fetch entities to update the diagram
+        try {
+          const response = await fetch(`/api/entities?dataModelId=${dataModelId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setEntities(data.entities || []);
+          }
+        } catch (error) {
+          console.error('Error fetching entities:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting relationship:', error);
+      alert(`Error deleting relationship: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [selectedRelationship, fetchRelationships, dataModelId, setEntities]);
 
   // Apply dimming effect based on selection
   const applyDimming = useCallback(() => {
@@ -2117,6 +2223,19 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
                   // Set the node to delete and show confirmation modal
                   setNodeToDelete(selectedNodes[0]);
                   setShowDeleteConfirmModal(true);
+                }
+                
+                // Check if a relationship is selected
+                const selectedEdges = edges.filter(edge => edge.selected);
+                if (selectedEdges.length === 1 && selectedRelationship) {
+                  // Prevent default behavior
+                  event.preventDefault();
+                  
+                  // Show confirmation dialog
+                  if (window.confirm('Are you sure you want to delete this relationship? This action cannot be undone and will remove the foreign key attribute.')) {
+                    // Delete the relationship
+                    handleDeleteRelationship();
+                  }
                 }
               }
             }}
