@@ -16,9 +16,10 @@ interface SearchItem {
 interface DiagramSearchProps {
   nodes: any[];
   onSelectEntity: (entityId: string) => void;
+  onSearchActive?: (isActive: boolean) => void;
 }
 
-export function DiagramSearch({ nodes, onSelectEntity }: DiagramSearchProps) {
+export function DiagramSearch({ nodes, onSelectEntity, onSearchActive }: DiagramSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -209,11 +210,21 @@ export function DiagramSearch({ nodes, onSelectEntity }: DiagramSearchProps) {
           onChange={e => {
             setSearchTerm(e.target.value);
             setIsOpen(true);
+            // Notify parent that search is active
+            onSearchActive?.(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            setIsOpen(true);
+            // Notify parent that search is active
+            onSearchActive?.(true);
+          }}
           onBlur={() => {
             // Delay closing to allow for clicks on results
-            setTimeout(() => setIsOpen(false), 200);
+            setTimeout(() => {
+              setIsOpen(false);
+              // Notify parent that search is no longer active
+              onSearchActive?.(false);
+            }, 200);
           }}
           onKeyDown={handleKeyDown}
         />

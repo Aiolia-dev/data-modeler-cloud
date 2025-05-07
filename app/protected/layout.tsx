@@ -26,12 +26,12 @@ function ProtectedLayoutContent({
   }
   
   return (
-    <div className="flex h-screen">
-      {/* Sidebar - hidden on mobile by default */}
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar - hidden on mobile by default, fixed position */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
-        sidebarCollapsed ? "lg:w-16" : "lg:w-64",
-        "hidden lg:block"
+        "fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out",
+        sidebarCollapsed ? "w-16" : "w-64",
+        "hidden lg:block overflow-y-auto"
       )}>
         <SidebarNavigation collapsed={sidebarCollapsed} />
       </div>
@@ -48,8 +48,8 @@ function ProtectedLayoutContent({
       
       {/* Main content */}
       <div className={cn(
-        "flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out",
-        sidebarCollapsed ? "lg:ml-16" : "lg:ml-16"
+        "flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out overflow-y-auto",
+        sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
       )}>
         {/* Top navigation bar */}
         <div className="h-16 border-b border-gray-800 flex items-center px-4">
