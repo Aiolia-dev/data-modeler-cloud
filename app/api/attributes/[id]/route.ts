@@ -2,6 +2,23 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
+// Define the attribute database structure
+interface Attribute {
+  id: string;
+  entity_id: string;
+  name: string;
+  data_type: string;
+  description?: string;
+  is_primary_key: boolean;
+  is_foreign_key: boolean;
+  is_unique: boolean;
+  is_mandatory: boolean;
+  is_calculated: boolean;
+  referenced_entity_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Define the expected request body structure
 interface UpdateAttributeRequest {
   name?: string;
@@ -181,7 +198,54 @@ export async function DELETE(
     // Use admin client to bypass RLS policies
     const adminSupabase = createAdminClient();
     
-    // Delete the attribute
+    // First, check if this attribute is a foreign key
+    const { data: attributeData, error: fetchError } = await adminSupabase
+      .from("attributes")
+      .select("is_foreign_key, referenced_entity_id, entity_id")
+      .eq("id", attributeId)
+      .single<Pick<Attribute, 'is_foreign_key' | 'referenced_entity_id' | 'entity_id'>>();
+    
+    if (fetchError) {
+      console.error("Error fetching attribute:", fetchError);
+      return NextResponse.json(
+        { error: "Failed to fetch attribute information" },
+        { status: 500 }
+      );
+    }
+    
+    // If this is a foreign key with a referenced entity, we need to delete any relationship entries
+    if (attributeData && attributeData.is_foreign_key && attributeData.referenced_entity_id) {
+      console.log(`Attribute ${attributeId} is a foreign key referencing entity ${attributeData.referenced_entity_id}`);
+      
+      // Try to find and delete the relationship
+      // The relationship could be in either direction (source->target or target->source)
+      const { data: relationshipData, error: relFetchError } = await adminSupabase
+        .from("relationships")
+        .select("id")
+        .or(`source_entity_id.eq.${attributeData.entity_id},target_entity_id.eq.${attributeData.entity_id}`)
+        .or(`source_entity_id.eq.${attributeData.referenced_entity_id},target_entity_id.eq.${attributeData.referenced_entity_id}`)
+        .limit(1)
+        .returns<{ id: string }[]>();
+        
+      if (!relFetchError && relationshipData && relationshipData.length > 0) {
+        console.log(`Deleting relationship with ID: ${relationshipData[0].id}`);
+        
+        // Delete the relationship
+        const { error: relDeleteError } = await adminSupabase
+          .from("relationships")
+          .delete()
+          .eq("id", relationshipData[0].id);
+          
+        if (relDeleteError) {
+          console.error("Error deleting relationship:", relDeleteError);
+          // Continue with attribute deletion even if relationship deletion fails
+        } else {
+          console.log(`Successfully deleted relationship ${relationshipData[0].id}`);
+        }
+      }
+    }
+    
+    // Now delete the attribute
     const { error } = await adminSupabase
       .from("attributes")
       .delete()
