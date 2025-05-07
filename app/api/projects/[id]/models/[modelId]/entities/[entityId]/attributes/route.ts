@@ -128,21 +128,29 @@ export async function PUT(
     // Update or insert attributes
     for (const attribute of attributes) {
       if (attribute.id) {
-        // Update existing attribute - only include fields that exist in the database
+        // Update existing attribute - include all necessary fields including referenced_entity_id for foreign keys
+        const updateData: any = {
+          name: attribute.name,
+          description: attribute.description,
+          data_type: attribute.data_type,
+          length: attribute.length,
+          is_required: attribute.is_required,
+          is_unique: attribute.is_unique,
+          default_value: attribute.default_value,
+          is_primary_key: attribute.is_primary_key,
+          is_foreign_key: attribute.is_foreign_key,
+          updated_at: new Date().toISOString(),
+        };
+        
+        // Add referenced_entity_id if it exists and this is a foreign key
+        if (attribute.is_foreign_key && attribute.referenced_entity_id) {
+          updateData.referenced_entity_id = attribute.referenced_entity_id;
+          console.log(`Updating referenced_entity_id to ${attribute.referenced_entity_id} for foreign key ${attribute.name}`);
+        }
+        
         const { error: updateError } = await adminSupabase
           .from("attributes")
-          .update({
-            name: attribute.name,
-            description: attribute.description,
-            data_type: attribute.data_type,
-            length: attribute.length,
-            is_required: attribute.is_required,
-            is_unique: attribute.is_unique,
-            default_value: attribute.default_value,
-            is_primary_key: attribute.is_primary_key,
-            is_foreign_key: attribute.is_foreign_key,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", attribute.id);
 
         if (updateError) {
@@ -153,23 +161,31 @@ export async function PUT(
           );
         }
       } else {
-        // Insert new attribute - only include fields that exist in the database
+        // Insert new attribute - include all necessary fields including referenced_entity_id for foreign keys
+        const insertData: any = {
+          name: attribute.name,
+          description: attribute.description,
+          data_type: attribute.data_type,
+          length: attribute.length,
+          is_required: attribute.is_required,
+          is_unique: attribute.is_unique,
+          default_value: attribute.default_value,
+          is_primary_key: attribute.is_primary_key,
+          is_foreign_key: attribute.is_foreign_key,
+          entity_id: params.entityId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        
+        // Add referenced_entity_id if it exists and this is a foreign key
+        if (attribute.is_foreign_key && attribute.referenced_entity_id) {
+          insertData.referenced_entity_id = attribute.referenced_entity_id;
+          console.log(`Adding referenced_entity_id ${attribute.referenced_entity_id} for foreign key ${attribute.name}`);
+        }
+        
         const { error: insertError } = await adminSupabase
           .from("attributes")
-          .insert({
-            name: attribute.name,
-            description: attribute.description,
-            data_type: attribute.data_type,
-            length: attribute.length,
-            is_required: attribute.is_required,
-            is_unique: attribute.is_unique,
-            default_value: attribute.default_value,
-            is_primary_key: attribute.is_primary_key,
-            is_foreign_key: attribute.is_foreign_key,
-            entity_id: params.entityId,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
+          .insert(insertData);
 
         if (insertError) {
           console.error(`Error inserting attribute ${attribute.name}:`, insertError);

@@ -763,6 +763,8 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                 const { attributes: currentAttributes } = await getResponse.json();
                 
                 // Prepare the new foreign key in the correct format
+                // The API endpoint doesn't include referenced_entity_id in its standard fields
+                // We need to explicitly add it to the attributes object
                 const newForeignKeyData = {
                   name: foreignKeyData.name,
                   description: foreignKeyData.description,
@@ -771,8 +773,13 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                   is_unique: false,
                   is_primary_key: false,
                   is_foreign_key: true,
-                  referenced_entity_id: foreignKeyData.referencedEntityId,
+                  referenced_entity_id: foreignKeyData.referencedEntityId, // This is the critical field for relationships
                 };
+                
+                console.log('Foreign key data to be saved:', {
+                  newForeignKeyData,
+                  originalData: foreignKeyData
+                });
                 
                 // Add the new foreign key to the existing attributes
                 const updatedAttributes = [...currentAttributes, newForeignKeyData];
