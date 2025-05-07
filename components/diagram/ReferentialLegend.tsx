@@ -29,7 +29,7 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-200 mb-3">Diagram Legend</h3>
           <div className="space-y-3">
-            <div>
+            <div className="ml-2.5">
               <h4 className="text-xs font-medium text-gray-300 mb-1">Entity Nodes</h4>
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-4 h-4 rounded-sm bg-gray-700 border border-gray-600 flex-shrink-0" />
@@ -37,7 +37,7 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
               </div>
             </div>
             
-            <div>
+            <div className="ml-2.5">
               <h4 className="text-xs font-medium text-gray-300 mb-1">Attributes</h4>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-purple-400 text-xs">🔑</span>
@@ -49,7 +49,7 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
               </div>
             </div>
             
-            <div>
+            <div className="ml-2.5">
               <h4 className="text-xs font-medium text-gray-300 mb-1">Attribute Labels</h4>
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="outline" className="h-4 text-[0.6rem] px-1 py-0 border-red-500 text-red-400">Req</Badge>
@@ -61,7 +61,7 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
               </div>
             </div>
             
-            <div>
+            <div className="ml-2.5">
               <h4 className="text-xs font-medium text-gray-300 mb-1">Relationships</h4>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-0.5 bg-gray-500 flex-shrink-0" />
@@ -74,7 +74,7 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
         {/* Referentials Legend Section */}
         <h3 className="text-sm font-semibold text-gray-200 mb-3">Referentials Legend</h3>
         <ScrollArea className="h-[calc(100vh-500px)]">
-          <div className="space-y-2">
+          <div className="space-y-2 ml-2.5">
             {referentials.length > 0 ? (
               referentials.map((ref) => (
                 <div key={ref.id} className="flex items-center gap-2">
