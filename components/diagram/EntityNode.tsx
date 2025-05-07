@@ -5,9 +5,10 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import ReactDOM from 'react-dom';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/contexts/settings-context';
-import { Trash2, Pen, Copy } from 'lucide-react';
+import { Trash2, Pen, Copy, PlusCircle } from 'lucide-react';
 import { AttributeTooltip } from './AttributeTooltip';
 import QuickEditAttributeModal from './QuickEditAttributeModal';
+import AttributeModal from '@/components/entity/attribute-modal';
 
 // Define types if they're not imported from external files
 interface AttributeData {
@@ -119,6 +120,9 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
   const [attributeRules, setAttributeRules] = useState<Record<string, number>>({});
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeData | null>(null);
   const [showQuickEditModal, setShowQuickEditModal] = useState(false);
+  
+  // State for new attribute modal
+  const [showNewAttributeModal, setShowNewAttributeModal] = useState(false);
   
   // Fetch rules for this entity when selected
   React.useEffect(() => {
@@ -475,7 +479,20 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
             }}
           />
         ))}
-
+        
+        {/* Add new attribute button - only shown when entity is selected */}
+        {selected && (
+          <div className="flex justify-center mt-2 mb-1">
+            <button
+              className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+              onClick={() => setShowNewAttributeModal(true)}
+              title="Add new attribute"
+            >
+              <PlusCircle className="w-4 h-4 text-gray-300" />
+            </button>
+          </div>
+        )}
+        
         {/* Attribute Tooltip - only show when entity is selected */}
         {selected && hoveredAttribute && tooltipPosition && ReactDOM.createPortal(
           <AttributeTooltip
@@ -592,6 +609,82 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                 console.log('Attribute updated successfully');
               } catch (error) {
                 console.error('Error updating attribute:', error);
+                throw error;
+              }
+            }}
+          />,
+          document.getElementById('overlay-root') as HTMLElement
+        )}
+        
+        {/* New Attribute Modal */}
+        {selected && ReactDOM.createPortal(
+          <AttributeModal
+            open={showNewAttributeModal}
+            onOpenChange={setShowNewAttributeModal}
+            entityId={data.id}
+            dataModelId={dataModelId}
+            projectId={projectId}
+            onSave={async (attributeData) => {
+              console.log('Creating new attribute:', attributeData);
+              try {
+                // Call the API to create the new attribute
+                const response = await fetch(`/api/entities/${data.id}/attributes`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    name: attributeData.name,
+                    description: attributeData.description,
+                    dataType: attributeData.dataType,
+                    isRequired: attributeData.isRequired,
+                    isUnique: attributeData.isUnique,
+                    defaultValue: attributeData.defaultValue,
+                    length: attributeData.length,
+                    isPrimaryKey: attributeData.isPrimaryKey,
+                    isForeignKey: attributeData.isForeignKey,
+                    validationStatus: attributeData.validationStatus,
+                    validatorId: attributeData.validatorId,
+                  }),
+                });
+                
+                if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || 'Failed to create attribute');
+                }
+                
+                // Get the newly created attribute from the response
+                const newAttribute = await response.json();
+                console.log('New attribute created:', newAttribute);
+                
+                // Add the new attribute to the node data
+                const updatedAttributes = [...data.attributes, {
+                  id: newAttribute.id,
+                  name: newAttribute.name,
+                  dataType: newAttribute.dataType,
+                  description: newAttribute.description,
+                  isRequired: newAttribute.isRequired,
+                  is_required: newAttribute.isRequired,
+                  isUnique: newAttribute.isUnique,
+                  is_unique: newAttribute.isUnique,
+                  isPrimaryKey: newAttribute.isPrimaryKey,
+                  is_primary_key: newAttribute.isPrimaryKey,
+                  isForeignKey: newAttribute.isForeignKey,
+                  is_foreign_key: newAttribute.isForeignKey,
+                }];
+                
+                // Dispatch a custom event to update the node data
+                const event = new CustomEvent('attribute-updated', {
+                  detail: {
+                    entityId: data.id,
+                    attributes: updatedAttributes,
+                  },
+                });
+                document.dispatchEvent(event);
+                
+                console.log('Attribute created and node updated successfully');
+              } catch (error) {
+                console.error('Error creating attribute:', error);
                 throw error;
               }
             }}
