@@ -2020,6 +2020,12 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
             // We're handling Delete key ourselves to show a confirmation modal
             deleteKeyCode={null}
             onKeyDown={(event) => {
+              // Skip handling if the event target is an input field or textarea
+              const target = event.target as HTMLElement;
+              if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return; // Allow default behavior for input fields
+              }
+              
               // Only handle Delete and Backspace keys
               if ((event.key === 'Delete' || event.key === 'Backspace') && !isViewer) {
                 // Get selected nodes
