@@ -5,10 +5,17 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import ReactDOM from 'react-dom';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/contexts/settings-context';
-import { Trash2, Pen, Copy, PlusCircle } from 'lucide-react';
+import { Trash2, Pen, Copy, PlusCircle, KeyRound, Database } from 'lucide-react';
 import { AttributeTooltip } from './AttributeTooltip';
 import QuickEditAttributeModal from './QuickEditAttributeModal';
 import AttributeModal from '@/components/entity/attribute-modal';
+import ForeignKeyModal from '@/components/entity/foreign-key-modal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Define types if they're not imported from external files
 interface AttributeData {
@@ -121,8 +128,9 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeData | null>(null);
   const [showQuickEditModal, setShowQuickEditModal] = useState(false);
   
-  // State for new attribute modal
+  // State for new attribute and foreign key modals
   const [showNewAttributeModal, setShowNewAttributeModal] = useState(false);
+  const [showForeignKeyModal, setShowForeignKeyModal] = useState(false);
   
   // Fetch rules for this entity when selected
   React.useEffect(() => {
@@ -480,16 +488,35 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
           />
         ))}
         
-        {/* Add new attribute button - only shown when entity is selected */}
+        {/* Add new attribute dropdown menu - only shown when entity is selected */}
         {selected && (
           <div className="flex justify-center mt-2 mb-1">
-            <button
-              className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
-              onClick={() => setShowNewAttributeModal(true)}
-              title="Add new attribute"
-            >
-              <PlusCircle className="w-4 h-4 text-gray-300" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+                  title="Add attribute options"
+                >
+                  <PlusCircle className="w-4 h-4 text-gray-300" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56 bg-gray-800 border-gray-700 text-gray-200">
+                <DropdownMenuItem 
+                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-700"
+                  onClick={() => setShowNewAttributeModal(true)}
+                >
+                  <Database className="w-4 h-4" />
+                  <span>Create standard attribute</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="flex items-center gap-2 cursor-pointer hover:bg-gray-700"
+                  onClick={() => setShowForeignKeyModal(true)}
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Create foreign key</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
         
@@ -685,6 +712,73 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                 console.log('Attribute created and node updated successfully');
               } catch (error) {
                 console.error('Error creating attribute:', error);
+                throw error;
+              }
+            }}
+          />,
+          document.getElementById('overlay-root') as HTMLElement
+        )}
+        
+        {/* Foreign Key Modal */}
+        {selected && ReactDOM.createPortal(
+          <ForeignKeyModal
+            open={showForeignKeyModal}
+            onOpenChange={setShowForeignKeyModal}
+            entityId={data.id}
+            dataModelId={dataModelId}
+            projectId={projectId}
+            onSave={async (foreignKeyData) => {
+              console.log('Creating new foreign key:', foreignKeyData);
+              try {
+                // Call the API to create the new foreign key
+                const response = await fetch(`/api/entities/${data.id}/foreign-keys`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    name: foreignKeyData.name,
+                    description: foreignKeyData.description,
+                    referencedEntityId: foreignKeyData.referencedEntityId,
+                    dataType: foreignKeyData.dataType,
+                    isRequired: foreignKeyData.isRequired,
+                  }),
+                });
+                
+                if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || 'Failed to create foreign key');
+                }
+                
+                // Get the newly created foreign key from the response
+                const newForeignKey = await response.json();
+                console.log('New foreign key created:', newForeignKey);
+                
+                // Add the new foreign key to the node data as an attribute
+                const updatedAttributes = [...data.attributes, {
+                  id: newForeignKey.id,
+                  name: newForeignKey.name,
+                  dataType: newForeignKey.dataType,
+                  description: newForeignKey.description,
+                  isRequired: newForeignKey.isRequired,
+                  is_required: newForeignKey.isRequired,
+                  isForeignKey: true,
+                  is_foreign_key: true,
+                  referencedEntity: newForeignKey.referencedEntityId,
+                }];
+                
+                // Dispatch a custom event to update the node data
+                const event = new CustomEvent('attribute-updated', {
+                  detail: {
+                    entityId: data.id,
+                    attributes: updatedAttributes,
+                  },
+                });
+                document.dispatchEvent(event);
+                
+                console.log('Foreign key created and node updated successfully');
+              } catch (error) {
+                console.error('Error creating foreign key:', error);
                 throw error;
               }
             }}
