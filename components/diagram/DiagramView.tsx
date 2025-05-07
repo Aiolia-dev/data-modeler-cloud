@@ -34,6 +34,7 @@ import { EntityModal, EntityFormData } from '@/components/entity/entity-modal';
 import { ReferentialSelectionModal } from './ReferentialSelectionModal';
 import { ReferentialLegend } from './ReferentialLegend';
 import OptimizeButton from './OptimizeButton';
+import FullScreenButton from './FullScreenButton';
 import { SettingsModal } from '@/components/settings/settings-modal';
 
 // Define node and edge types outside of the component to prevent recreation on each render
@@ -1060,6 +1061,8 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   
   // Referential legend visibility state
   const [showReferentialLegend, setShowReferentialLegend] = useState(true);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const savedReferentialLegendState = useRef(true);
   
   // Settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -1996,11 +1999,22 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
                 color: referentialColors[ref.id] || '#374151',
                 entityCount: ref.entityCount
               }))} 
-              visible={showReferentialLegend}
+              visible={showReferentialLegend && !isSearchActive}
             />
             <Panel position="top-left" className="m-4">
               <DiagramSearch 
                 nodes={nodes} 
+                onSearchActive={(active) => {
+                  // If search becomes active, save current legend state and hide it
+                  if (active && showReferentialLegend) {
+                    savedReferentialLegendState.current = true;
+                    setIsSearchActive(true);
+                  } 
+                  // If search becomes inactive, restore previous legend state
+                  else if (!active) {
+                    setIsSearchActive(false);
+                  }
+                }}
                 onSelectEntity={(entityId) => {
                   // Select the entity node
                   setNodes(nds => nds.map(n => ({
@@ -2061,6 +2075,12 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
                   edges={edges}
                   onOptimize={handleOptimize}
                   isOptimizing={isOptimizing}
+                />
+                <FullScreenButton
+                  dataModelId={dataModelId}
+                  projectId={projectId}
+                  nodes={nodes}
+                  edges={edges}
                 />
                 <Button
                   size="icon"
