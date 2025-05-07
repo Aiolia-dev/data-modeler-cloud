@@ -1156,14 +1156,21 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
         }
       })));
       
-      // Update edges - dim all
-      setEdges(eds => eds.map(edge => ({
-        ...edge,
-        data: {
-          ...edge.data,
-          dimmed: true
-        }
-      })));
+      // Update edges - dim all but highlight those connected to the selected entity
+      setEdges(eds => eds.map(edge => {
+        // Check if this edge is connected to the selected entity
+        const isConnectedToSelected = edge.source === selectedEntityId || edge.target === selectedEntityId;
+        
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            dimmed: !isConnectedToSelected,
+            sourceSelected: edge.source === selectedEntityId,
+            targetSelected: edge.target === selectedEntityId
+          }
+        };
+      }));
     } 
     // If nothing is selected, reset all dimming
     else {
@@ -1179,7 +1186,9 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
         ...edge,
         data: {
           ...edge.data,
-          dimmed: false
+          dimmed: false,
+          sourceSelected: false,
+          targetSelected: false
         }
       })));
     }
@@ -1380,6 +1389,8 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
               label: rel.name,
               sourcePosition: anchorPositions.sourcePosition,
               targetPosition: anchorPositions.targetPosition,
+              sourceEntityName: sourceNode.data.name,
+              targetEntityName: targetNode.data.name,
             },
           } as Edge;
         })

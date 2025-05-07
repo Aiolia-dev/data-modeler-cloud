@@ -1,9 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { Node, Edge, useReactFlow, Position } from 'reactflow';
+import { OptimizationSelectionModal, OptimizationAlgorithm } from './OptimizationSelectionModal';
 
 interface OptimizeButtonProps {
   nodes: Node[];
@@ -23,18 +24,52 @@ const OptimizeButton: React.FC<OptimizeButtonProps> = ({
   isOptimizing
 }) => {
   const { fitView } = useReactFlow();
+  const [showOptimizationModal, setShowOptimizationModal] = useState(false);
 
   const handleOptimize = () => {
+    if (isOptimizing || nodes.length === 0) return;
+    
+    // Show the optimization selection modal instead of immediately optimizing
+    setShowOptimizationModal(true);
+  };
+  
+  const handleSelectAlgorithm = (algorithm: OptimizationAlgorithm) => {
     if (isOptimizing || nodes.length === 0) return;
     
     // Create a copy of the nodes to work with
     const nodesCopy = JSON.parse(JSON.stringify(nodes));
     
-    // Start the Sugiyama hierarchical layout algorithm
-    const optimizedNodes = applySugiyamaLayout(nodesCopy, edges);
+    let optimizedNodes: Node[];
+    let updatedEdges: Edge[];
     
-    // Determine optimal anchor points for edges based on new node positions
-    const updatedEdges = determineOptimalAnchorPoints(optimizedNodes, edges);
+    // Apply the selected optimization algorithm
+    switch (algorithm) {
+      case 'sugiyama':
+        // Start the Sugiyama hierarchical layout algorithm
+        optimizedNodes = applySugiyamaLayout(nodesCopy, edges);
+        // Determine optimal anchor points for edges based on new node positions
+        updatedEdges = determineOptimalAnchorPoints(optimizedNodes, edges);
+        break;
+        
+      case 'referential':
+        // Apply the referential cluster algorithm
+        console.log('Applying referential cluster optimization');
+        optimizedNodes = applyReferentialClusterLayout(nodesCopy, edges);
+        updatedEdges = determineOptimalAnchorPoints(optimizedNodes, edges);
+        break;
+        
+      case 'option3':
+        // Placeholder for option 3 algorithm
+        console.log('Option 3 optimization selected - implementation pending');
+        // For now, use Sugiyama as fallback
+        optimizedNodes = applySugiyamaLayout(nodesCopy, edges);
+        updatedEdges = determineOptimalAnchorPoints(optimizedNodes, edges);
+        break;
+        
+      default:
+        optimizedNodes = applySugiyamaLayout(nodesCopy, edges);
+        updatedEdges = determineOptimalAnchorPoints(optimizedNodes, edges);
+    }
     
     // Update the nodes with the new positions and edge anchor points
     onOptimize(optimizedNodes, updatedEdges);
@@ -357,18 +392,145 @@ const OptimizeButton: React.FC<OptimizeButtonProps> = ({
   };
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleOptimize}
-      disabled={isOptimizing || nodes.length === 0}
-      className="flex items-center gap-1"
-      title="Optimize diagram layout"
-    >
-      <RefreshCw className={`h-4 w-4 ${isOptimizing ? 'animate-spin' : ''}`} />
-      <span>Optimize</span>
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleOptimize}
+        disabled={isOptimizing || nodes.length === 0}
+        className="flex items-center gap-1"
+        title="Optimize diagram layout"
+      >
+        <RefreshCw className={`h-4 w-4 ${isOptimizing ? 'animate-spin' : ''}`} />
+        <span>Optimize</span>
+      </Button>
+      
+      <OptimizationSelectionModal
+        open={showOptimizationModal}
+        onOpenChange={setShowOptimizationModal}
+        onSelectAlgorithm={handleSelectAlgorithm}
+      />
+    </>
   );
+};
+
+/**
+ * Organizes entities by their referential assignments, creating visually distinct clusters
+ * This algorithm groups entities that belong to the same referential close to each other
+ * and separates different referential clusters with sufficient spacing.
+ */
+const applyReferentialClusterLayout = (nodes: Node[], edges: Edge[]): Node[] => {
+  if (nodes.length === 0) return nodes;
+  
+  // Constants for the referential cluster layout
+  const CLUSTER_SPACING = 800;      // Spacing between different referential clusters
+  const ENTITY_SPACING = 300;       // Spacing between entities in the same cluster
+  const CLUSTER_RADIUS_FACTOR = 1.5; // Factor to determine cluster radius based on entity count
+  
+  // Step 1: Group entities by referential ID
+  const referentialGroups: Record<string, Node[]> = {};
+  
+  // Initialize with a default group for entities without a referential
+  referentialGroups['none'] = [];
+  
+  // Group nodes by their referential ID
+  nodes.forEach(node => {
+    const referentialId = node.data?.referential_id || 'none';
+    if (!referentialGroups[referentialId]) {
+      referentialGroups[referentialId] = [];
+    }
+    referentialGroups[referentialId].push(node);
+  });
+  
+  // Step 2: Calculate positions for each referential cluster
+  const referentialIds = Object.keys(referentialGroups);
+  const clusterCount = referentialIds.length;
+  
+  // Arrange clusters in a grid layout
+  const gridSize = Math.ceil(Math.sqrt(clusterCount));
+  
+  // Step 3: Position each entity within its cluster
+  referentialIds.forEach((referentialId, clusterIndex) => {
+    const clusterNodes = referentialGroups[referentialId];
+    if (clusterNodes.length === 0) return;
+    
+    // Calculate cluster center position based on grid layout
+    const row = Math.floor(clusterIndex / gridSize);
+    const col = clusterIndex % gridSize;
+    
+    const clusterCenterX = col * CLUSTER_SPACING;
+    const clusterCenterY = row * CLUSTER_SPACING;
+    
+    // Determine the layout for entities within the cluster
+    if (clusterNodes.length === 1) {
+      // Single entity - place at cluster center
+      clusterNodes[0].position = { x: clusterCenterX, y: clusterCenterY };
+    } else if (clusterNodes.length <= 8) {
+      // Small cluster - arrange in a circle around the center
+      const radius = ENTITY_SPACING * CLUSTER_RADIUS_FACTOR;
+      clusterNodes.forEach((node, i) => {
+        const angle = (i / clusterNodes.length) * 2 * Math.PI;
+        const x = clusterCenterX + radius * Math.cos(angle);
+        const y = clusterCenterY + radius * Math.sin(angle);
+        node.position = { x, y };
+      });
+    } else {
+      // Larger cluster - arrange in a grid within the cluster
+      const innerGridSize = Math.ceil(Math.sqrt(clusterNodes.length));
+      clusterNodes.forEach((node, i) => {
+        const innerRow = Math.floor(i / innerGridSize);
+        const innerCol = i % innerGridSize;
+        
+        const x = clusterCenterX + (innerCol - innerGridSize / 2) * ENTITY_SPACING;
+        const y = clusterCenterY + (innerRow - innerGridSize / 2) * ENTITY_SPACING;
+        node.position = { x, y };
+      });
+    }
+  });
+  
+  // Step 4: Optimize connections between clusters
+  // Find edges that connect entities from different referential groups
+  const interClusterEdges = edges.filter(edge => {
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
+    
+    if (!sourceNode || !targetNode) return false;
+    
+    const sourceRefId = sourceNode.data?.referential_id || 'none';
+    const targetRefId = targetNode.data?.referential_id || 'none';
+    
+    return sourceRefId !== targetRefId;
+  });
+  
+  // Adjust positions to minimize edge crossings between clusters
+  // This is a simplified approach - for complex graphs, more sophisticated algorithms would be needed
+  interClusterEdges.forEach(edge => {
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
+    
+    if (!sourceNode || !targetNode) return;
+    
+    // Move connected entities slightly toward each other to reduce edge length
+    // but maintain cluster integrity by limiting the movement
+    const dx = targetNode.position.x - sourceNode.position.x;
+    const dy = targetNode.position.y - sourceNode.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Only adjust if distance is large
+    if (distance > CLUSTER_SPACING / 2) {
+      const moveRatio = 0.1; // Move 10% toward the other entity
+      
+      // Move source node slightly toward target
+      sourceNode.position.x += dx * moveRatio;
+      sourceNode.position.y += dy * moveRatio;
+      
+      // Move target node slightly toward source
+      targetNode.position.x -= dx * moveRatio;
+      targetNode.position.y -= dy * moveRatio;
+    }
+  });
+  
+  return nodes;
 };
 
 export default OptimizeButton;
