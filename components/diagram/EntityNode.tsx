@@ -6,8 +6,6 @@ import ReactDOM from 'react-dom';
 import { Badge } from '@/components/ui/badge';
 import { useSettings } from '@/contexts/settings-context';
 import { Trash2, Pen, Copy, PlusCircle, KeyRound, Database } from 'lucide-react';
-import { AttributeTooltip } from './AttributeTooltip';
-import QuickEditAttributeModal from './QuickEditAttributeModal';
 import AttributeModal from '@/components/entity/attribute-modal';
 import ForeignKeyModal from '@/components/entity/foreign-key-modal';
 import {
@@ -16,6 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AttributeTooltip } from './AttributeTooltip';
+import QuickEditAttributeModal from './QuickEditAttributeModal';
 
 // Define types if they're not imported from external files
 interface AttributeData {
@@ -519,7 +519,7 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
             </DropdownMenu>
           </div>
         )}
-        
+
         {/* Attribute Tooltip - only show when entity is selected */}
         {selected && hoveredAttribute && tooltipPosition && ReactDOM.createPortal(
           <AttributeTooltip
@@ -654,24 +654,40 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
             onSave={async (attributeData) => {
               console.log('Creating new attribute:', attributeData);
               try {
-                // Call the API to create the new attribute
-                const response = await fetch(`/api/entities/${data.id}/attributes`, {
-                  method: 'POST',
+                // Get current attributes first
+                const getResponse = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities/${data.id}/attributes`);
+                if (!getResponse.ok) {
+                  throw new Error('Failed to fetch current attributes');
+                }
+                
+                const { attributes: currentAttributes } = await getResponse.json();
+                console.log('Current attributes:', currentAttributes);
+                
+                // Prepare the new attribute in the correct format
+                const newAttributeData = {
+                  name: attributeData.name,
+                  description: attributeData.description,
+                  data_type: attributeData.dataType, // Note: using data_type instead of dataType
+                  is_required: attributeData.isRequired, // Note: using is_required instead of isRequired
+                  is_unique: attributeData.isUnique,
+                  default_value: attributeData.defaultValue,
+                  length: attributeData.length,
+                  is_primary_key: attributeData.isPrimaryKey,
+                  is_foreign_key: attributeData.isForeignKey,
+                  // No need to include entity_id as it's in the URL
+                };
+                
+                // Add the new attribute to the existing ones
+                const updatedAttributes = [...currentAttributes, newAttributeData];
+                
+                // Call the API to update the attributes array
+                const response = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities/${data.id}/attributes`, {
+                  method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    name: attributeData.name,
-                    description: attributeData.description,
-                    dataType: attributeData.dataType,
-                    isRequired: attributeData.isRequired,
-                    isUnique: attributeData.isUnique,
-                    defaultValue: attributeData.defaultValue,
-                    length: attributeData.length,
-                    isPrimaryKey: attributeData.isPrimaryKey,
-                    isForeignKey: attributeData.isForeignKey,
-                    validationStatus: attributeData.validationStatus,
-                    validatorId: attributeData.validatorId,
+                    attributes: updatedAttributes
                   }),
                 });
                 
@@ -680,31 +696,39 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                   throw new Error(errorData.error || 'Failed to create attribute');
                 }
                 
-                // Get the newly created attribute from the response
-                const newAttribute = await response.json();
-                console.log('New attribute created:', newAttribute);
+                // Get the updated attributes from the response
+                const { attributes: newAttributes } = await response.json();
+                console.log('New attribute created:', newAttributes);
+                
+                // Find the newly created attribute (should be the last one)
+                const newAttribute = newAttributes[newAttributes.length - 1];
+                
+                // Update the node data with all attributes from the response
+                const nodeUpdatedAttributes = data.attributes.map(attr => ({
+                  ...attr
+                }));
                 
                 // Add the new attribute to the node data
-                const updatedAttributes = [...data.attributes, {
+                nodeUpdatedAttributes.push({
                   id: newAttribute.id,
                   name: newAttribute.name,
-                  dataType: newAttribute.dataType,
+                  dataType: newAttribute.data_type,
                   description: newAttribute.description,
-                  isRequired: newAttribute.isRequired,
-                  is_required: newAttribute.isRequired,
-                  isUnique: newAttribute.isUnique,
-                  is_unique: newAttribute.isUnique,
-                  isPrimaryKey: newAttribute.isPrimaryKey,
-                  is_primary_key: newAttribute.isPrimaryKey,
-                  isForeignKey: newAttribute.isForeignKey,
-                  is_foreign_key: newAttribute.isForeignKey,
-                }];
+                  isRequired: newAttribute.is_required,
+                  is_required: newAttribute.is_required,
+                  isUnique: newAttribute.is_unique,
+                  is_unique: newAttribute.is_unique,
+                  isPrimaryKey: newAttribute.is_primary_key,
+                  is_primary_key: newAttribute.is_primary_key,
+                  isForeignKey: newAttribute.is_foreign_key,
+                  is_foreign_key: newAttribute.is_foreign_key,
+                });
                 
                 // Dispatch a custom event to update the node data
                 const event = new CustomEvent('attribute-updated', {
                   detail: {
                     entityId: data.id,
-                    attributes: updatedAttributes,
+                    attributes: nodeUpdatedAttributes,
                   },
                 });
                 document.dispatchEvent(event);
@@ -730,18 +754,37 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
             onSave={async (foreignKeyData) => {
               console.log('Creating new foreign key:', foreignKeyData);
               try {
-                // Call the API to create the new foreign key
-                const response = await fetch(`/api/entities/${data.id}/foreign-keys`, {
-                  method: 'POST',
+                // Get current attributes first
+                const getResponse = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities/${data.id}/attributes`);
+                if (!getResponse.ok) {
+                  throw new Error('Failed to fetch current attributes');
+                }
+                
+                const { attributes: currentAttributes } = await getResponse.json();
+                
+                // Prepare the new foreign key in the correct format
+                const newForeignKeyData = {
+                  name: foreignKeyData.name,
+                  description: foreignKeyData.description,
+                  data_type: foreignKeyData.dataType,
+                  is_required: foreignKeyData.isRequired,
+                  is_unique: false,
+                  is_primary_key: false,
+                  is_foreign_key: true,
+                  referenced_entity_id: foreignKeyData.referencedEntityId,
+                };
+                
+                // Add the new foreign key to the existing attributes
+                const updatedAttributes = [...currentAttributes, newForeignKeyData];
+                
+                // Call the API to update the attributes array
+                const response = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities/${data.id}/attributes`, {
+                  method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    name: foreignKeyData.name,
-                    description: foreignKeyData.description,
-                    referencedEntityId: foreignKeyData.referencedEntityId,
-                    dataType: foreignKeyData.dataType,
-                    isRequired: foreignKeyData.isRequired,
+                    attributes: updatedAttributes
                   }),
                 });
                 
@@ -750,28 +793,40 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                   throw new Error(errorData.error || 'Failed to create foreign key');
                 }
                 
-                // Get the newly created foreign key from the response
-                const newForeignKey = await response.json();
-                console.log('New foreign key created:', newForeignKey);
+                // Get the updated attributes from the response
+                const { attributes: newAttributes } = await response.json();
+                console.log('New foreign key created:', newAttributes);
                 
-                // Add the new foreign key to the node data as an attribute
-                const updatedAttributes = [...data.attributes, {
+                // Find the newly created foreign key (should be the last one)
+                const newForeignKey = newAttributes[newAttributes.length - 1];
+                
+                // Update the node data with all attributes from the response
+                const nodeUpdatedAttributes = data.attributes.map(attr => ({
+                  ...attr
+                }));
+                
+                // Add the new foreign key to the node data
+                nodeUpdatedAttributes.push({
                   id: newForeignKey.id,
                   name: newForeignKey.name,
-                  dataType: newForeignKey.dataType,
+                  dataType: newForeignKey.data_type,
                   description: newForeignKey.description,
-                  isRequired: newForeignKey.isRequired,
-                  is_required: newForeignKey.isRequired,
+                  isRequired: newForeignKey.is_required,
+                  is_required: newForeignKey.is_required,
+                  isUnique: newForeignKey.is_unique,
+                  is_unique: newForeignKey.is_unique,
+                  isPrimaryKey: newForeignKey.is_primary_key,
+                  is_primary_key: newForeignKey.is_primary_key,
                   isForeignKey: true,
                   is_foreign_key: true,
-                  referencedEntity: newForeignKey.referencedEntityId,
-                }];
+                  referencedEntity: newForeignKey.referenced_entity_id,
+                });
                 
                 // Dispatch a custom event to update the node data
                 const event = new CustomEvent('attribute-updated', {
                   detail: {
                     entityId: data.id,
-                    attributes: updatedAttributes,
+                    attributes: nodeUpdatedAttributes,
                   },
                 });
                 document.dispatchEvent(event);
