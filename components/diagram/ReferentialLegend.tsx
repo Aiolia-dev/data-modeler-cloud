@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 interface Referential {
   id: string;
@@ -39,12 +40,24 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
             <div>
               <h4 className="text-xs font-medium text-gray-300 mb-1">Attributes</h4>
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-3 h-3 rounded-full bg-yellow-600 flex-shrink-0" />
-                <span className="text-xs text-gray-300">Primary Key</span>
+                <span className="text-purple-400 text-xs">🔑</span>
+                <span className="text-xs text-purple-300">Primary Key</span>
               </div>
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-3 h-3 rounded-full bg-blue-600 flex-shrink-0" />
-                <span className="text-xs text-gray-300">Foreign Key</span>
+                <span className="text-blue-400 text-xs">🔗</span>
+                <span className="text-xs text-blue-300">Foreign Key</span>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-xs font-medium text-gray-300 mb-1">Attribute Labels</h4>
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="outline" className="h-4 text-[0.6rem] px-1 py-0 border-red-500 text-red-400">Req</Badge>
+                <span className="text-xs text-gray-300">Required</span>
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="outline" className="h-4 text-[0.6rem] px-1 py-0 border-yellow-500 text-yellow-400">Unq</Badge>
+                <span className="text-xs text-gray-300">Unique</span>
               </div>
             </div>
             
@@ -60,7 +73,7 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
         
         {/* Referentials Legend Section */}
         <h3 className="text-sm font-semibold text-gray-200 mb-3">Referentials Legend</h3>
-        <ScrollArea className="h-[calc(100vh-450px)]">
+        <ScrollArea className="h-[calc(100vh-500px)]">
           <div className="space-y-2">
             {referentials.length > 0 ? (
               referentials.map((ref) => (
