@@ -22,25 +22,15 @@ export default function NewHero() {
         </Link>
       </div>
       
-      <div className="mt-12 w-full max-w-4xl h-[400px] bg-card rounded-lg relative overflow-hidden">
-        <div className="absolute top-[60px] left-[120px] bg-primary rounded-lg p-4 w-[120px] h-[80px] flex justify-center items-center font-semibold">
-          Customer
-        </div>
-        <div className="absolute top-[200px] left-[350px] bg-primary rounded-lg p-4 w-[120px] h-[80px] flex justify-center items-center font-semibold">
-          Order
-        </div>
-        <div className="absolute top-[120px] right-[150px] bg-primary rounded-lg p-4 w-[120px] h-[80px] flex justify-center items-center font-semibold">
-          Product
-        </div>
-        <div className="absolute bottom-[70px] left-[180px] bg-primary rounded-lg p-4 w-[120px] h-[80px] flex justify-center items-center font-semibold">
-          Address
-        </div>
-        
-        {/* Relationships */}
-        <div className="absolute w-[240px] h-[2px] bg-background top-[100px] left-[240px] origin-top-left rotate-[30deg]"></div>
-        <div className="absolute w-[180px] h-[2px] bg-background top-[240px] left-[470px] origin-top-left rotate-[-30deg]"></div>
-        <div className="absolute w-[160px] h-[2px] bg-background top-[140px] left-[180px] origin-top-left rotate-[90deg]"></div>
-        <div className="absolute w-[270px] h-[2px] bg-background top-[160px] left-[300px] origin-top-left rotate-[140deg]"></div>
+      <div className="mt-12 w-full max-w-4xl relative overflow-hidden rounded-lg shadow-xl">
+        <Image 
+          src="/images/herosection.png" 
+          alt="DataModel Pro interface showing entity relationship diagram" 
+          width={1200} 
+          height={600} 
+          className="w-full h-auto rounded-lg" 
+          priority 
+        />
       </div>
     </section>
   );
