@@ -13,11 +13,7 @@ export default async function Layout({
         </div>
         <h1 className="text-2xl font-bold">DataModel Pro</h1>
       </div>
-      <div className="absolute top-8 right-8 flex gap-6">
-        <a href="#" className="text-gray-400 hover:text-white">Documentation</a>
-        <a href="#" className="text-gray-400 hover:text-white">Support</a>
-        <a href="#" className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">Deploy to Vercel</a>
-      </div>
+      {/* Documentation link removed to prevent overlap with sign-in buttons */}
       {children}
       <div className="absolute bottom-8 text-gray-500 text-sm">
         Powered by Supabase
