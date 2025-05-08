@@ -2252,6 +2252,11 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
                 return '#374151';
               }}
               nodeBorderRadius={2}
+              zoomable={true}
+              pannable={true}
+              maskColor="rgba(0, 0, 0, 0.4)"
+              className="bg-gray-900 border border-gray-700 rounded-md"
+              style={{ width: 200, height: 160 }}
             />
             
             {/* Referential Legend */}
