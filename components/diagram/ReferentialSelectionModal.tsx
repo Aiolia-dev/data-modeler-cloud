@@ -93,7 +93,7 @@ export function ReferentialSelectionModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onApply}>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={onApply}>
             Apply
           </Button>
         </DialogFooter>
