@@ -141,10 +141,36 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   console.log('BUTTON DEBUG: Direct superuser check result:', isDirectSuperuser);
   console.log('BUTTON DEBUG: URL project ID:', urlProjectId);
   
+  // Check if the superuser badge exists in the DOM
+  const [domSuperuserCheck, setDomSuperuserCheck] = useState(false);
+  
+  // Check for superuser badge in the DOM
+  useEffect(() => {
+    const checkForSuperuserBadge = () => {
+      try {
+        // Look for the superuser badge in the DOM
+        const superuserBadge = document.querySelector('.superuser');
+        console.log('DOM CHECK: Superuser badge found in DOM:', !!superuserBadge);
+        if (superuserBadge) {
+          console.log('DOM CHECK: Found superuser badge in DOM, enabling button');
+          setDomSuperuserCheck(true);
+        }
+      } catch (error) {
+        console.error('DOM CHECK: Error checking for superuser badge:', error);
+      }
+    };
+    
+    // Check immediately and then periodically
+    checkForSuperuserBadge();
+    const interval = setInterval(checkForSuperuserBadge, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
   // Force enable for development/testing if needed
   const forceEnableButton = false; // Set to true to force enable the button
   
-  const canCreateEntities = permissionContextCheck || isDirectSuperuser || forceEnableButton;
+  const canCreateEntities = permissionContextCheck || isDirectSuperuser || domSuperuserCheck || forceEnableButton;
+  console.log('BUTTON DEBUG: DOM superuser check result:', domSuperuserCheck);
   console.log('BUTTON DEBUG: Final canCreateEntities value:', canCreateEntities);
   
   // Debug function to log permission details and force a refresh
