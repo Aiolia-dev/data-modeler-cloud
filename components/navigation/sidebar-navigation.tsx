@@ -182,16 +182,20 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
   // Separate effect to handle current project and data models
   useEffect(() => {
     if (currentProjectId) {
-      // Auto-expand current project in the sidebar
+      // Auto-expand current project in the sidebar ONLY when the currentProjectId changes
+      // This prevents an infinite loop when manually collapsing the project
       if (!expandedProjects[currentProjectId]) {
+        // Only auto-expand when the URL/route changes, not when the expandedProjects state changes
         toggleProject(currentProjectId);
       }
+      
       // Always fetch data models when currentProjectId changes (redundant if already loaded)
       if (!dataModels[currentProjectId] || dataModels[currentProjectId].length === 0) {
         fetchDataModels(currentProjectId);
       }
     }
-  }, [currentProjectId, expandedProjects]);
+    // Remove expandedProjects from the dependency array to prevent the infinite loop
+  }, [currentProjectId]);
   
   // Listen for data model refresh events
   useEffect(() => {
