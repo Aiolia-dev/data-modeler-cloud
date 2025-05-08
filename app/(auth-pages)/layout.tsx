@@ -15,9 +15,6 @@ export default async function Layout({
       </div>
       {/* Documentation link removed to prevent overlap with sign-in buttons */}
       {children}
-      <div className="absolute bottom-8 text-gray-500 text-sm">
-        Powered by Supabase
-      </div>
     </div>
   );
 }
