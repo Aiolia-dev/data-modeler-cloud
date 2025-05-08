@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, LinkIcon, ChevronRight } from "lucide-react";
+import { Search, LinkIcon, ChevronRight, ChevronUpIcon, ChevronDownIcon, ArrowUpDownIcon } from "lucide-react";
 import { Rule } from "@/types/rule";
 
 interface RulesListViewProps {
@@ -18,6 +18,10 @@ export function RulesListView({ dataModelId, projectId }: RulesListViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+  
+  // State for sorting
+  const [sortField, setSortField] = useState<'type' | 'entity' | 'attribute' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Fetch all rules for the data model
   useEffect(() => {
@@ -130,11 +134,52 @@ export function RulesListView({ dataModelId, projectId }: RulesListViewProps) {
     });
   };
   
+  // Function to toggle sort
+  const toggleSort = (field: 'type' | 'entity' | 'attribute') => {
+    if (sortField === field) {
+      // Toggle direction if already sorting by this field
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new sort field and default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   // Filter rules based on search query
-  const filteredRules = rules.filter(rule => 
-    rule.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (rule.entityName ? rule.entityName.toLowerCase().includes(searchQuery.toLowerCase()) : false)
-  );
+  const filteredRules = rules.filter(rule => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      rule.name.toLowerCase().includes(query) ||
+      rule.rule_type.toLowerCase().includes(query) ||
+      (rule.entityName && rule.entityName.toLowerCase().includes(query)) ||
+      (rule.attributeName && rule.attributeName.toLowerCase().includes(query))
+    );
+  });
+  
+  // Sort filtered rules based on sort field and direction
+  const sortedRules = [...filteredRules];
+  if (sortField === 'type') {
+    sortedRules.sort((a, b) => {
+      const comparison = a.rule_type.localeCompare(b.rule_type);
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  } else if (sortField === 'entity') {
+    sortedRules.sort((a, b) => {
+      const entityA = a.entityName || '';
+      const entityB = b.entityName || '';
+      const comparison = entityA.localeCompare(entityB);
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  } else if (sortField === 'attribute') {
+    sortedRules.sort((a, b) => {
+      const attributeA = a.attributeName || '';
+      const attributeB = b.attributeName || '';
+      const comparison = attributeA.localeCompare(attributeB);
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }
 
   // Get rule type badge
   const getRuleTypeBadge = (ruleType: string) => {
@@ -212,22 +257,79 @@ export function RulesListView({ dataModelId, projectId }: RulesListViewProps) {
           <thead>
             <tr className="bg-gray-800 border-b border-gray-700">
               <th className="text-left px-4 py-3 font-medium text-gray-200">Rule Name</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-200">Type</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-200">Entity</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-200">Attribute</th>
+              <th 
+                className="text-center px-4 py-3 font-medium text-gray-200 cursor-pointer hover:bg-gray-700/30"
+                onClick={() => toggleSort('type')}
+                title="Click to sort by rule type"
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <span>Type</span>
+                  <div className="ml-1 flex items-center">
+                    {sortField === 'type' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon size={16} className="text-blue-400" />
+                      ) : (
+                        <ChevronDownIcon size={16} className="text-blue-400" />
+                      )
+                    ) : (
+                      <ArrowUpDownIcon size={14} className="text-gray-400" />
+                    )}
+                  </div>
+                </div>
+              </th>
+              <th 
+                className="text-left px-4 py-3 font-medium text-gray-200 cursor-pointer hover:bg-gray-700/30"
+                onClick={() => toggleSort('entity')}
+                title="Click to sort by entity name"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Entity</span>
+                  <div className="ml-1 flex items-center">
+                    {sortField === 'entity' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon size={16} className="text-blue-400" />
+                      ) : (
+                        <ChevronDownIcon size={16} className="text-blue-400" />
+                      )
+                    ) : (
+                      <ArrowUpDownIcon size={14} className="text-gray-400" />
+                    )}
+                  </div>
+                </div>
+              </th>
+              <th 
+                className="text-left px-4 py-3 font-medium text-gray-200 cursor-pointer hover:bg-gray-700/30"
+                onClick={() => toggleSort('attribute')}
+                title="Click to sort by attribute name"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Attribute</span>
+                  <div className="ml-1 flex items-center">
+                    {sortField === 'attribute' ? (
+                      sortDirection === 'asc' ? (
+                        <ChevronUpIcon size={16} className="text-blue-400" />
+                      ) : (
+                        <ChevronDownIcon size={16} className="text-blue-400" />
+                      )
+                    ) : (
+                      <ArrowUpDownIcon size={14} className="text-gray-400" />
+                    )}
+                  </div>
+                </div>
+              </th>
               <th className="text-center px-4 py-3 font-medium text-gray-200">Depends On</th>
               <th className="text-center px-4 py-3 font-medium text-gray-200">Required By</th>
             </tr>
           </thead>
           <tbody>
-          {filteredRules.length === 0 ? (
+          {sortedRules.length === 0 ? (
             <tr>
               <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                 No rules found. Create rules for your entities to see them here.
               </td>
             </tr>
           ) : (
-            filteredRules.map((rule) => (
+            sortedRules.map((rule) => (
               <React.Fragment key={rule.id}>
                 {/* Rule row */}
                 <tr

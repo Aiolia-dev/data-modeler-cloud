@@ -12,7 +12,6 @@ import { RulesListView } from "@/components/rules/rules-list-view";
 import { ReferentialList } from "@/components/referential/referential-list";
 import { EntityModal, EntityFormData } from "@/components/entity/entity-modal";
 import { usePermissions } from "@/context/permission-context";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 interface DataModelClientProps {
   projectId: string;
@@ -24,9 +23,6 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || "entities");
-  
-  // Initialize Supabase client
-  const supabase = createClientComponentClient();
   
   // Get permission context to check if user can create entities
   const { 
@@ -60,118 +56,9 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   // Get the project ID directly from the URL
   const urlProjectId = extractProjectIdFromUrl();
   
-  // State to track superuser status directly from auth
-  const [isDirectSuperuser, setIsDirectSuperuser] = useState(false);
-  
-  // Directly check for superuser status in user metadata with extensive debugging
-  useEffect(() => {
-    const checkSuperuserStatus = async () => {
-      console.log('SUPERUSER DEBUG: Starting direct superuser check');
-      try {
-        // Get user data
-        console.log('SUPERUSER DEBUG: Fetching user data from auth');
-        const authResponse = await supabase.auth.getUser();
-        console.log('SUPERUSER DEBUG: Auth response:', authResponse);
-        
-        const user = authResponse.data?.user;
-        console.log('SUPERUSER DEBUG: User object:', user);
-        
-        if (user) {
-          console.log('SUPERUSER DEBUG: User ID:', user.id);
-          console.log('SUPERUSER DEBUG: User email:', user.email);
-          console.log('SUPERUSER DEBUG: Full user metadata:', user.user_metadata);
-          
-          // Check for superuser flag in multiple ways
-          const isSuperuserFlag = user.user_metadata?.is_superuser;
-          const isSuperuserString = String(isSuperuserFlag).toLowerCase();
-          
-          console.log('SUPERUSER DEBUG: Raw is_superuser flag:', isSuperuserFlag);
-          console.log('SUPERUSER DEBUG: is_superuser as string:', isSuperuserString);
-          console.log('SUPERUSER DEBUG: Type of is_superuser:', typeof isSuperuserFlag);
-          
-          // Check multiple conditions
-          const conditions = {
-            exactTrue: isSuperuserFlag === true,
-            stringTrue: isSuperuserFlag === 'true',
-            stringLowerTrue: isSuperuserString === 'true',
-            truthy: !!isSuperuserFlag
-          };
-          
-          console.log('SUPERUSER DEBUG: Condition checks:', conditions);
-          
-          // Set superuser status based on any valid condition
-          const superuserStatus = conditions.exactTrue || conditions.stringTrue || conditions.stringLowerTrue;
-          console.log('SUPERUSER DEBUG: Final superuser status:', superuserStatus);
-          
-          // Force superuser status for specific emails
-          if (user.email?.includes('@outscale.com') || user.email === 'cedric.kerbidi@gmail.com') {
-            console.log('SUPERUSER DEBUG: Forcing superuser status for known admin email');
-            setIsDirectSuperuser(true);
-          } else {
-            setIsDirectSuperuser(superuserStatus);
-          }
-          
-          // Add to window for direct console access
-          if (typeof window !== 'undefined') {
-            (window as any).__DEBUG_userMetadata = user.user_metadata;
-            (window as any).__DEBUG_isSuperuser = superuserStatus;
-            console.log('SUPERUSER DEBUG: Added debug variables to window object');
-          }
-        } else {
-          console.log('SUPERUSER DEBUG: No user found in auth response');
-        }
-      } catch (error) {
-        console.error('SUPERUSER DEBUG: Error checking superuser status:', error);
-      }
-    };
-    
-    checkSuperuserStatus();
-    
-    // Set up interval to check periodically
-    const interval = setInterval(checkSuperuserStatus, 5000);
-    return () => clearInterval(interval);
-  }, [supabase.auth]);
-  
   // Compute canCreateEntities on each render to ensure it's up to date
-  // Use both the permission context check and direct superuser check
-  const permissionContextCheck = hasPermission('create', urlProjectId || undefined);
-  
-  // Log detailed information about the permission check
-  console.log('BUTTON DEBUG: Permission context check result:', permissionContextCheck);
-  console.log('BUTTON DEBUG: Direct superuser check result:', isDirectSuperuser);
-  console.log('BUTTON DEBUG: URL project ID:', urlProjectId);
-  
-  // Check if the superuser badge exists in the DOM
-  const [domSuperuserCheck, setDomSuperuserCheck] = useState(false);
-  
-  // Check for superuser badge in the DOM
-  useEffect(() => {
-    const checkForSuperuserBadge = () => {
-      try {
-        // Look for the superuser badge in the DOM
-        const superuserBadge = document.querySelector('.superuser');
-        console.log('DOM CHECK: Superuser badge found in DOM:', !!superuserBadge);
-        if (superuserBadge) {
-          console.log('DOM CHECK: Found superuser badge in DOM, enabling button');
-          setDomSuperuserCheck(true);
-        }
-      } catch (error) {
-        console.error('DOM CHECK: Error checking for superuser badge:', error);
-      }
-    };
-    
-    // Check immediately and then periodically
-    checkForSuperuserBadge();
-    const interval = setInterval(checkForSuperuserBadge, 1000);
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Force enable for development/testing if needed
-  const forceEnableButton = false; // Set to true to force enable the button
-  
-  const canCreateEntities = permissionContextCheck || isDirectSuperuser || domSuperuserCheck || forceEnableButton;
-  console.log('BUTTON DEBUG: DOM superuser check result:', domSuperuserCheck);
-  console.log('BUTTON DEBUG: Final canCreateEntities value:', canCreateEntities);
+  // Pass the extracted project ID directly to hasPermission to ensure it uses the correct one
+  const canCreateEntities = hasPermission('create', urlProjectId || undefined);
   
   // Debug function to log permission details and force a refresh
   const debugPermissions = () => {
@@ -516,20 +403,12 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
                 <div className="flex gap-2">
                   <Button 
                     className="bg-blue-600 hover:bg-blue-700"
-                    onClick={() => {
-                      console.log('BUTTON CLICK: New Entity button clicked');
-                      setShowEntityModal(true);
-                    }}
+                    onClick={() => setShowEntityModal(true)}
                     disabled={!canCreateEntities}
                     title={!canCreateEntities ? "You don't have permission to create entities" : "Create a new entity"}
-                    onMouseEnter={() => {
-                      console.log('BUTTON HOVER: Permission check:', permissionContextCheck);
-                      console.log('BUTTON HOVER: Direct superuser:', isDirectSuperuser);
-                      console.log('BUTTON HOVER: Can create entities:', canCreateEntities);
-                    }}
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    New Entity {isDirectSuperuser ? '(Super)' : ''}
+                    New Entity
                   </Button>
                 </div>
               </div>
