@@ -12,6 +12,7 @@ import { RulesListView } from "@/components/rules/rules-list-view";
 import { ReferentialList } from "@/components/referential/referential-list";
 import { EntityModal, EntityFormData } from "@/components/entity/entity-modal";
 import { usePermissions } from "@/context/permission-context";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 interface DataModelClientProps {
   projectId: string;
@@ -23,6 +24,9 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || "entities");
+  
+  // Initialize Supabase client
+  const supabase = createClientComponentClient();
   
   // Get permission context to check if user can create entities
   const { 
@@ -56,9 +60,34 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   // Get the project ID directly from the URL
   const urlProjectId = extractProjectIdFromUrl();
   
+  // State to track superuser status directly from auth
+  const [isDirectSuperuser, setIsDirectSuperuser] = useState(false);
+  
+  // Directly check for superuser status in user metadata
+  useEffect(() => {
+    const checkSuperuserStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.user_metadata) {
+          const isSuperuserFlag = user.user_metadata.is_superuser;
+          const superuserStatus = isSuperuserFlag === true || isSuperuserFlag === 'true';
+          console.log('DIRECT CHECK: User metadata:', user.user_metadata);
+          console.log('DIRECT CHECK: Is superuser flag:', isSuperuserFlag);
+          console.log('DIRECT CHECK: Setting superuser status to:', superuserStatus);
+          setIsDirectSuperuser(superuserStatus);
+        }
+      } catch (error) {
+        console.error('Error directly checking superuser status:', error);
+      }
+    };
+    
+    checkSuperuserStatus();
+  }, [supabase.auth]);
+  
   // Compute canCreateEntities on each render to ensure it's up to date
-  // Pass the extracted project ID directly to hasPermission to ensure it uses the correct one
-  const canCreateEntities = hasPermission('create', urlProjectId || undefined);
+  // Use both the permission context check and direct superuser check
+  const permissionContextCheck = hasPermission('create', urlProjectId || undefined);
+  const canCreateEntities = permissionContextCheck || isDirectSuperuser;
   
   // Debug function to log permission details and force a refresh
   const debugPermissions = () => {
