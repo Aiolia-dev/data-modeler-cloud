@@ -14,7 +14,7 @@ export default function NewHero() {
         Create, visualize, and manage entity relationships for your database architecture with precision and ease
       </p>
       <div className="flex gap-4">
-        <Link href="/auth-pages/sign-up" className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-md font-medium transition-colors">
+        <Link href="/auth-pages/sign-up" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors">
           Get Started
         </Link>
         <Link href="#demo" className="border border-border hover:bg-accent hover:text-accent-foreground px-6 py-3 rounded-md font-medium transition-colors">
