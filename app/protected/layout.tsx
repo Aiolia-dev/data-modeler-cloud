@@ -83,7 +83,7 @@ function ProtectedLayoutContent({
         
         {/* Page content */}
         <div className="flex-1">
-          <div className="pl-[50px] pr-4 py-4">
+          <div className="pl-[20px] pr-4 py-4">
             {children}
           </div>
         </div>
