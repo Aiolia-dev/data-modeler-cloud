@@ -130,6 +130,34 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       setUserEmail(email);
       setIsAuthenticated(true); // Set authenticated to true since we have a valid email
       
+      // Check if the user is a superuser by fetching their metadata from Supabase
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Check if the user has the is_superuser flag in their metadata
+          const isSuperuserFlag = user.user_metadata?.is_superuser;
+          const newSuperuserStatus = isSuperuserFlag === true || isSuperuserFlag === 'true';
+          
+          console.log('User metadata:', user.user_metadata);
+          console.log('Is superuser flag:', isSuperuserFlag);
+          console.log('Setting superuser status to:', newSuperuserStatus);
+          
+          // Update the superuser status
+          setIsSuperuser(newSuperuserStatus);
+          
+          // Also set the user ID if available
+          if (user.id) {
+            setUserId(user.id);
+          }
+        } else {
+          console.log('No user found in auth.getUser() response');
+          setIsSuperuser(false);
+        }
+      } catch (error) {
+        console.error('Error checking superuser status:', error);
+        setIsSuperuser(false);
+      }
+      
       // Extract project ID from URL if possible
       // Handle both /projects/{projectId} and /projects/{projectId}/models/{modelId} patterns
       let projectId = null;
