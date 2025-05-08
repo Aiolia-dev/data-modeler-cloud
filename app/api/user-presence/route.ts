@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const adminClient = createAdminClient();
 
     // Upsert presence record using SQL function to avoid TypeScript issues
-    const { error } = await adminClient.rpc('set_user_presence', {
+    const { error } = await (adminClient.rpc as any)('set_user_presence', {
       p_user_id: user_id,
       p_project_id: project_id,
       p_last_seen_at: last_seen_at
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
 
     // Get all online users for the project (last_seen_at within 2 min and is_online true)
     // Use raw SQL query to avoid TypeScript errors with the new table
-    const { data, error } = await adminClient.rpc('get_online_users', {
+    const { data, error } = await (adminClient.rpc as any)('get_online_users', {
       p_project_id: project_id,
       p_threshold_minutes: 2
     });

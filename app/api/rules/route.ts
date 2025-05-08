@@ -60,15 +60,16 @@ export async function GET(request: NextRequest) {
 
     // If count only, get the count
     if (countOnly) {
-      const { data, error, count } = await query.count('exact');
+      const { data, error } = await query;
       
       if (error) {
         console.error("Error counting rules:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
       
+      const count = data?.length || 0;
       console.log(`Counted ${count} rules matching the criteria`);
-      return NextResponse.json({ count: count || 0 });
+      return NextResponse.json({ count });
     }
     
     // Otherwise, get the full data

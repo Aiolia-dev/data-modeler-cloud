@@ -9,7 +9,7 @@ export default function AuthBypass() {
   const [status, setStatus] = useState("Checking authentication status...");
   const [authDetails, setAuthDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,27 +22,20 @@ export default function AuthBypass() {
         const extractedEmail = emailElement ? emailElement.textContent?.trim() : null;
         if (extractedEmail) {
           setUserEmail(extractedEmail);
-          setDebugInfo(prev => ({ ...prev, extractedEmail }));
+          setDebugInfo((prev: Record<string, any>) => ({ ...prev, extractedEmail }));
         }
 
         // Direct approach - create a new client each time
         const supabase = createClientComponentClient({
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
           supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-          options: {
-            auth: {
-              persistSession: true,
-              autoRefreshToken: true,
-              detectSessionInUrl: true,
-            }
-          }
         });
 
         // First get session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
         // Record debug info
-        setDebugInfo(prev => ({
+        setDebugInfo((prev: Record<string, any>) => ({
           ...prev,
           sessionData,
           sessionError: sessionError?.message,
@@ -85,7 +78,7 @@ export default function AuthBypass() {
         });
         
         const data = await response.json();
-        setDebugInfo(prev => ({ ...prev, apiResponse: data }));
+        setDebugInfo((prev: Record<string, any>) => ({ ...prev, apiResponse: data }));
         
         if (!response.ok) {
           setStatus(`API auth failed: ${data.message || "Unknown error"}`);
@@ -98,7 +91,7 @@ export default function AuthBypass() {
       } catch (error: any) {
         console.error("Auth check error:", error);
         setStatus(`Error checking auth: ${error.message}`);
-        setDebugInfo(prev => ({ ...prev, error: error.toString() }));
+        setDebugInfo((prev: Record<string, any>) => ({ ...prev, error: error.toString() }));
       } finally {
         setLoading(false);
       }
@@ -129,7 +122,7 @@ export default function AuthBypass() {
       });
 
       const result = await response.json();
-      setDebugInfo(prev => ({ ...prev, superuserResult: result }));
+      setDebugInfo((prev: Record<string, any>) => ({ ...prev, superuserResult: result }));
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to set superuser");

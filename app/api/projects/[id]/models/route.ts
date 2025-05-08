@@ -1,17 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`POST /api/projects/${projectId}/models - Creating a new data model`);
-  
   try {
+    const { id } = await params;
+    const projectId = id;
+    console.log(`POST /api/projects/${projectId}/models - Creating a new data model`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -101,7 +100,7 @@ export async function POST(
     console.log('Data model created successfully:', dataModel);
     return NextResponse.json({ dataModel });
   } catch (error) {
-    console.error(`Error in POST /api/projects/${projectId}/models:`, error);
+    console.error(`Error in POST /api/projects/[id]/models:`, error);
     return NextResponse.json(
       { error: 'Failed to create data model', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -110,15 +109,14 @@ export async function POST(
 }
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`GET /api/projects/${projectId}/models - Fetching data models`);
-  
   try {
+    const { id } = await params;
+    const projectId = id;
+    console.log(`GET /api/projects/${projectId}/models - Fetching data models`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -163,7 +161,7 @@ export async function GET(
     console.log(`Fetched ${dataModels.length} data models for project ${projectId}`);
     return NextResponse.json({ dataModels });
   } catch (error) {
-    console.error(`Error in GET /api/projects/${projectId}/models:`, error);
+    console.error(`Error in GET /api/projects/[id]/models:`, error);
     return NextResponse.json(
       { error: 'Failed to fetch data models', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

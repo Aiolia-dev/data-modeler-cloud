@@ -3,12 +3,10 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { toast } from "@/components/ui/use-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -68,6 +66,7 @@ export default function AdminDashboard() {
   const { toast } = useToast()
   
   const [loading, setLoading] = useState(true)
+  const [isSuperuser, setIsSuperuser] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [dataModels, setDataModels] = useState<DataModel[]>([])
   const [dataModelUsers, setDataModelUsers] = useState<DataModelUser[]>([])
@@ -118,6 +117,18 @@ export default function AdminDashboard() {
     const loadDashboard = async () => {
       setLoading(true)
       
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        toast({
+          title: "Error",
+          description: "Failed to get user: " + (userError?.message || "User not found"),
+          variant: "destructive"
+        })
+        router.push("/protected/projects")
+        return
+      }
       
       // Use the is_superuser function to check if user is a superuser
       const { data: isSuperuser, error: superuserError } = await supabase.rpc('is_superuser')
@@ -145,7 +156,7 @@ export default function AdminDashboard() {
       setCurrentUser({
         id: user.id,
         email: user.email || '',
-        confirmed_at: user.confirmed_at || '',
+        confirmed_at: user.user_metadata?.confirmed_at || '',
         is_superuser: true
       })
       
@@ -159,8 +170,8 @@ export default function AdminDashboard() {
       setLoading(false)
     }
     
-    checkSuperuser()
-  }, [])
+    loadDashboard()
+  }, [router, supabase, toast])
   
   const fetchUsers = async () => {
     try {
@@ -184,25 +195,24 @@ export default function AdminDashboard() {
   
   const fetchDataModels = async () => {
     try {
-      const { data, error } = await supabase
-        .from('data_models')
-        .select(`
-          id,
-          name,
-          project_id,
-          projects(name)
-        `)
+      // Get all data models with their project names
+      const { data, error } = await supabase.rpc('get_all_data_models')
       
       if (error) {
-        throw error
+        toast({
+          title: "Error",
+          description: "Failed to fetch data models: " + error.message,
+          variant: "destructive"
+        })
+        return
       }
       
-      if (!data) {
+      if (!data || !Array.isArray(data)) {
         setDataModels([])
         return
       }
       
-      const formattedDataModels = data.map(dm => ({
+      const formattedDataModels = data.map((dm: any) => ({
         id: dm.id,
         name: dm.name,
         project_id: dm.project_id,
@@ -243,17 +253,24 @@ export default function AdminDashboard() {
         return
       }
       
-      const formattedDataModelUsers = data.map(dmu => ({
-        id: dmu.id,
-        data_model_id: dmu.data_model_id,
-        user_id: dmu.user_id,
-        role: dmu.role,
-        assigned_at: dmu.assigned_at,
-        user_email: dmu.user && typeof dmu.user === 'object' ? dmu.user.email : undefined,
-        data_model_name: dmu.data_models && typeof dmu.data_models === 'object' ? dmu.data_models.name : undefined
-      }))
+      const enhancedData = data.map(assignment => {
+        const user = users.find(u => u.id === assignment.user_id)
+        const dataModel = dataModels.find(dm => dm.id === assignment.data_model_id)
+        
+        return {
+          ...assignment,
+          user_email: user?.email || 'Unknown',
+          data_model_name: dataModel?.name || 'Unknown'
+        }
+      })
       
-      setDataModelUsers(formattedDataModelUsers)
+      // Sort by email and data model name
+      setDataModelUsers(enhancedData.sort((a, b) => {
+        if (a.user_email === b.user_email) {
+          return a.data_model_name.localeCompare(b.data_model_name)
+        }
+        return a.user_email.localeCompare(b.user_email)
+      }))
     } catch (error: any) {
       toast({
         title: "Error",

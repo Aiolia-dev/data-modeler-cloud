@@ -5,18 +5,13 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   try {
     // Capture all cookie information for debugging
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     
     // Handle cookies correctly for different versions of Next.js
     let allCookies: { name: string, value: string, path?: string, secure?: boolean }[] = [];
     try {
-      // For newer versions of Next.js where cookies() returns a Promise
-      if (typeof cookieStore.getAll === 'function') {
-        allCookies = await (cookieStore as any).getAll();
-      } else {
-        // For older versions of Next.js
-        allCookies = cookieStore.getAll();
-      }
+      // In Next.js 15, cookies() returns the cookie store directly
+      allCookies = cookieStore.getAll();
     } catch (e) {
       console.error("Error getting cookies:", e);
     }

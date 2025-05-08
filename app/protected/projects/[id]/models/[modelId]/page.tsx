@@ -6,8 +6,8 @@ import Link from "next/link";
 import { createAdminClient } from "@/utils/supabase/admin";
 import DataModelWrapper from "@/components/data-model/DataModelWrapper";
 
-export default async function DataModelPageServer({ params }: { params: { id: string; modelId: string } }) {
-  const { id: projectId, modelId } = params;
+export default async function DataModelPageServer({ params }: { params: Promise<{ id: string; modelId: string }> }) {
+  const { id: projectId, modelId } = await params;
   
   const supabase = await createClient();
   

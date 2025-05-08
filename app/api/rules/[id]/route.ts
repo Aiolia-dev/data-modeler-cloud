@@ -5,11 +5,11 @@ import { createAdminClient } from "@/utils/supabase/admin";
 // GET /api/rules/[id] - Get a specific rule by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createAdminClient();
-    const { id } = params;
 
     // Fetch the rule
     const { data, error } = await supabase
@@ -39,11 +39,11 @@ export async function GET(
 // PATCH /api/rules/[id] - Update a specific rule
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createAdminClient();
-    const { id } = params;
     const body = await request.json();
 
     // Only update fields that are provided
@@ -162,11 +162,11 @@ export async function PATCH(
 // DELETE /api/rules/[id] - Delete a specific rule
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createAdminClient();
-    const { id } = params;
 
     // Delete the rule
     const { error } = await supabase.from("rules").delete().eq("id", id);

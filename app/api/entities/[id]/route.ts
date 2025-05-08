@@ -1,113 +1,119 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getEntityRole, isMethodAllowedForRole, UserRole } from '@/middleware/role-check';
 
 // GET endpoint to fetch a single entity by ID
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const entityId = params.id;
-  console.log(`[GET /api/entities/${entityId}] Fetching entity...`);
-  
-  // Get authenticated user info for logging
-  const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  console.log(`[GET /api/entities/${entityId}] User:`, user?.email, `(${user?.id})`, `Is superuser:`, user?.user_metadata?.is_superuser);
-  
-  if (!entityId) {
-    console.error(`[GET /api/entities/${entityId}] No entity ID provided.`);
-    return NextResponse.json({ error: 'Entity ID is required' }, { status: 400 });
-  }
-  
-  // Get the data model ID from the URL search params
-  const url = new URL(request.url);
-  const dataModelId = url.searchParams.get('dataModelId');
-  console.log(`[GET /api/entities/${entityId}] Data model ID from params:`, dataModelId);
-  
-  // Check user's role for this entity
-  console.log(`[GET /api/entities/${entityId}] Checking user role for entity...`);
-  const { role, error: roleError } = await getEntityRole(entityId);
-  console.log(`[GET /api/entities/${entityId}] Role check result:`, { role, error: roleError });
-  
-  if (roleError) {
-    console.error(`[GET /api/entities/${entityId}] Role check error:`, roleError);
-    return NextResponse.json({ error: roleError }, { status: 403 });
-  }
-  
-  // Check if the user's role allows GET requests
-  console.log(`[GET /api/entities/${entityId}] Checking if method GET is allowed for role ${role}...`);
-  const isAllowed = isMethodAllowedForRole('GET', role);
-  console.log(`[GET /api/entities/${entityId}] Method allowed:`, isAllowed);
-  
-  if (!isAllowed) {
-    console.error(`[GET /api/entities/${entityId}] User with role ${role} not allowed to perform GET`);
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-  }
-
-  // Use admin client to bypass RLS
-  console.log(`[GET /api/entities/${entityId}] Creating admin client to bypass RLS...`);
-  const adminClient = createAdminClient();
-  
-  // Build the query based on whether dataModelId is provided
-  console.log(`[GET /api/entities/${entityId}] Building query...`);
-  let query = adminClient
-    .from('entities')
-    .select('*')
-    .eq('id', entityId);
-    
-  // Add data_model_id filter if provided
-  if (dataModelId) {
-    console.log(`[GET /api/entities/${entityId}] Adding data_model_id filter: ${dataModelId}`);
-    query = query.eq('data_model_id', dataModelId);
-  }
-  
-  // Execute the query
-  console.log(`[GET /api/entities/${entityId}] Executing query...`);
-  let entity;
-  let queryError;
-  
   try {
-    const result = await query.single();
-    entity = result.data;
-    queryError = result.error;
-    console.log(`[GET /api/entities/${entityId}] Query result:`, { 
-      entity: entity ? 'Found' : 'Not found', 
-      error: queryError ? queryError.message : 'None' 
-    });
+    const { id: entityId } = await params;
+    console.log(`[GET /api/entities/${entityId}] Fetching entity...`);
+    
+    // Get authenticated user info for logging
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log(`[GET /api/entities/${entityId}] User:`, user?.email, `(${user?.id})`, `Is superuser:`, user?.user_metadata?.is_superuser);
+    
+    if (!entityId) {
+      console.error(`[GET /api/entities/${entityId}] No entity ID provided.`);
+      return NextResponse.json({ error: 'Entity ID is required' }, { status: 400 });
+    }
+    
+    // Get the data model ID from the URL search params
+    const url = new URL(request.url);
+    const dataModelId = url.searchParams.get('dataModelId');
+    console.log(`[GET /api/entities/${entityId}] Data model ID from params:`, dataModelId);
+    
+    // Check user's role for this entity
+    console.log(`[GET /api/entities/${entityId}] Checking user role for entity...`);
+    const { role, error: roleError } = await getEntityRole(entityId);
+    console.log(`[GET /api/entities/${entityId}] Role check result:`, { role, error: roleError });
+    
+    if (roleError) {
+      console.error(`[GET /api/entities/${entityId}] Role check error:`, roleError);
+      return NextResponse.json({ error: roleError }, { status: 403 });
+    }
+    
+    // Check if the user's role allows GET requests
+    console.log(`[GET /api/entities/${entityId}] Checking if method GET is allowed for role ${role}...`);
+    const isAllowed = isMethodAllowedForRole('GET', role);
+    console.log(`[GET /api/entities/${entityId}] Method allowed:`, isAllowed);
+    
+    if (!isAllowed) {
+      console.error(`[GET /api/entities/${entityId}] User with role ${role} not allowed to perform GET`);
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    // Use admin client to bypass RLS
+    console.log(`[GET /api/entities/${entityId}] Creating admin client to bypass RLS...`);
+    const adminClient = createAdminClient();
+    
+    // Build the query based on whether dataModelId is provided
+    console.log(`[GET /api/entities/${entityId}] Building query...`);
+    let query = adminClient
+      .from('entities')
+      .select('*')
+      .eq('id', entityId);
+      
+    // Add data_model_id filter if provided
+    if (dataModelId) {
+      console.log(`[GET /api/entities/${entityId}] Adding data_model_id filter: ${dataModelId}`);
+      query = query.eq('data_model_id', dataModelId);
+    }
+    
+    // Execute the query
+    console.log(`[GET /api/entities/${entityId}] Executing query...`);
+    let entity;
+    let queryError;
+    
+    try {
+      const result = await query.single();
+      entity = result.data;
+      queryError = result.error;
+      console.log(`[GET /api/entities/${entityId}] Query result:`, { 
+        entity: entity ? 'Found' : 'Not found', 
+        error: queryError ? queryError.message : 'None' 
+      });
+    } catch (error) {
+      console.error(`[GET /api/entities/${entityId}] Query execution error:`, error);
+      return NextResponse.json({ 
+        error: 'Error executing query', 
+        details: error instanceof Error ? error.message : String(error) 
+      }, { status: 500 });
+    }
+
+    if (queryError) {
+      console.error(`[GET /api/entities/${entityId}] Error fetching entity:`, queryError.message, queryError);
+      return NextResponse.json({ error: 'Failed to fetch entity', details: queryError.message }, { status: 404 });
+    }
+
+    if (!entity) {
+      console.warn(`[GET /api/entities/${entityId}] No entity found with this ID and data model ID.`);
+      return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
+    }
+
+    console.log(`[GET /api/entities/${entityId}] Entity fetched successfully:`, entity);
+    return NextResponse.json({ entity });
   } catch (error) {
-    console.error(`[GET /api/entities/${entityId}] Query execution error:`, error);
-    return NextResponse.json({ 
-      error: 'Error executing query', 
-      details: error instanceof Error ? error.message : String(error) 
-    }, { status: 500 });
+    console.error(`Error in GET /api/entities/[id]:`, error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-
-  if (queryError) {
-    console.error(`[GET /api/entities/${entityId}] Error fetching entity:`, queryError.message, queryError);
-    return NextResponse.json({ error: 'Failed to fetch entity', details: queryError.message }, { status: 404 });
-  }
-
-  if (!entity) {
-    console.warn(`[GET /api/entities/${entityId}] No entity found with this ID and data model ID.`);
-    return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
-  }
-
-  console.log(`[GET /api/entities/${entityId}] Entity fetched successfully:`, entity);
-  return NextResponse.json({ entity });
 }
 
 // PATCH endpoint to update entity properties (including position)
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log(`PATCH /api/entities/${params.id} - Updating entity`);
-  
   try {
-    // Get entity ID from params
-    const entityId = params.id;
+    const { id: entityId } = await params;
+    console.log(`PATCH /api/entities/${entityId} - Updating entity`);
     
     if (!entityId) {
       console.error('Entity ID is required');
@@ -131,19 +137,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
     
-    // Get request body
-    let body;
-    try {
-      body = await request.json();
-      console.log('Request body:', body);
-    } catch (jsonError) {
-      console.error('Error parsing request body:', jsonError);
-      return NextResponse.json(
-        { error: 'Invalid request body' },
-        { status: 400 }
-      );
-    }
-    
     // Authenticate user
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -164,13 +157,17 @@ export async function PATCH(
       );
     }
     
+    // Parse request body
+    const body = await request.json();
+    console.log('Request body:', body);
+    
     // Create admin client to bypass RLS
     const adminClient = createAdminClient();
     
     // First verify the entity exists
     const { data: entity, error: entityError } = await adminClient
       .from('entities')
-      .select('id')
+      .select('id, data_model_id')
       .eq('id', entityId)
       .single();
       
@@ -182,40 +179,42 @@ export async function PATCH(
       );
     }
     
-    // Prepare update data - convert camelCase to snake_case
-    const updateData: any = {};
+    // Prepare update data
+    const updateData: Record<string, any> = {};
     
-    // Only allow specific fields to be updated
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined) updateData.description = body.description;
+    // Handle position update
     if (body.position_x !== undefined) updateData.position_x = body.position_x;
     if (body.position_y !== undefined) updateData.position_y = body.position_y;
     
-    // Handle referential_id field
-    if (body.referential_id !== undefined) {
-      console.log('Updating referential_id to:', body.referential_id);
+    // Handle name update
+    if (body.name !== undefined) updateData.name = body.name;
+    
+    // Handle description update
+    if (body.description !== undefined) updateData.description = body.description;
+    
+    // Handle color update
+    if (body.color !== undefined) updateData.color = body.color;
+    
+    // Handle is_view update
+    if (body.is_view !== undefined) {
+      updateData.is_view = body.is_view;
       
-      // If referential_id is provided but null or empty string, set to null
-      // Otherwise use the provided value
-      updateData.referential_id = body.referential_id === '' ? null : body.referential_id;
-      
-      // Validate referential_id if it's not null
-      if (updateData.referential_id) {
-        try {
-          // Verify the referential exists
-          const { data: refData, error: refError } = await adminClient
-            .from('referentials')
-            .select('id')
-            .eq('id', updateData.referential_id)
-            .single();
-            
-          if (refError) {
-            console.error('Invalid referential_id:', updateData.referential_id, refError);
+      // If changing to a view, check if we need to update the SQL definition
+      if (body.is_view === true && body.sql_definition !== undefined) {
+        updateData.sql_definition = body.sql_definition;
+        
+        // If this is a view and we're updating the SQL, check if we need to update the attributes
+        if (body.attributes !== undefined) {
+          // First, delete all existing attributes for this entity
+          const { error: deleteAttributesError } = await adminClient
+            .from('attributes')
+            .delete()
+            .eq('entity_id', entityId);
+          
+          if (deleteAttributesError) {
+            console.error('Error deleting existing attributes:', deleteAttributesError);
             // Continue with the update anyway, but log the error
           }
-        } catch (refCheckError) {
-          console.error('Error checking referential:', refCheckError);
-          // Continue with the update anyway, but log the error
         }
       }
     }
@@ -247,9 +246,8 @@ export async function PATCH(
     
     console.log('Entity updated successfully:', updatedEntity);
     return NextResponse.json({ entity: updatedEntity });
-    
   } catch (error) {
-    console.error(`Error in PATCH /api/entities/${params.id}:`, error);
+    console.error(`Error in PATCH /api/entities/[id]:`, error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -259,14 +257,12 @@ export async function PATCH(
 
 // DELETE endpoint to delete an entity
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log(`DELETE /api/entities/${params.id} - Deleting entity`);
-  
   try {
-    // Get entity ID from params
-    const entityId = params.id;
+    const { id: entityId } = await params;
+    console.log(`DELETE /api/entities/${entityId} - Deleting entity`);
     
     if (!entityId) {
       console.error('Entity ID is required');
@@ -344,9 +340,8 @@ export async function DELETE(
     
     console.log('Entity deleted successfully');
     return NextResponse.json({ success: true });
-    
   } catch (error) {
-    console.error(`Error in DELETE /api/entities/${params.id}:`, error);
+    console.error(`Error in DELETE /api/entities/[id]:`, error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -82,7 +82,7 @@ export async function GET(request: Request) {
         countQuery = countQuery.eq('data_model_id', dataModelId);
       }
 
-      const { data, error, count } = await countQuery.count('exact');
+      const { data, error, count: relationshipCount } = await countQuery;
       
       if (error) {
         console.error('Error counting relationships:', error);
@@ -92,8 +92,10 @@ export async function GET(request: Request) {
         );
       }
       
+      // Get the count from the data array length since we're selecting only IDs
+      const count = data?.length || 0;
       console.log(`Successfully counted ${count} relationships for entity ${entityId || 'in model ' + dataModelId}`);
-      return NextResponse.json({ count: count || 0 });
+      return NextResponse.json({ count });
     }
     
     // Full data query

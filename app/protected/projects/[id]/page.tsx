@@ -6,10 +6,8 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { notFound } from "next/navigation";
 
-export default async function ProjectPage({ params: paramsInput }: { params: { id: string } }) {
-  // Properly await the params object
-  const params = await Promise.resolve(paramsInput);
-  const { id } = params;
+export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   
   const supabase = await createClient();
   
@@ -97,7 +95,7 @@ export default async function ProjectPage({ params: paramsInput }: { params: { i
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Data Models</h2>
-        <Link href={`/protected/projects/${params.id}/models/new`}>
+        <Link href={`/protected/projects/${id}/models/new`}>
           <Button className="flex items-center gap-2">
             <PlusIcon size={16} />
             New Data Model
@@ -114,7 +112,7 @@ export default async function ProjectPage({ params: paramsInput }: { params: { i
           <p className="text-muted-foreground max-w-md mb-6">
             Create your first data model to start designing your database schema.
           </p>
-          <Link href={`/protected/projects/${params.id}/models/new`}>
+          <Link href={`/protected/projects/${id}/models/new`}>
             <Button className="flex items-center gap-2">
               <PlusIcon size={16} />
               Create Data Model
@@ -125,7 +123,7 @@ export default async function ProjectPage({ params: paramsInput }: { params: { i
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {dataModels.map((model: any) => (
             <Link 
-              href={`/protected/projects/${params.id}/models/${model.id}`} 
+              href={`/protected/projects/${id}/models/${model.id}`} 
               key={model.id}
               className="group"
             >
@@ -142,7 +140,7 @@ export default async function ProjectPage({ params: paramsInput }: { params: { i
             </Link>
           ))}
           
-          <Link href={`/protected/projects/${params.id}/models/new`} className="group">
+          <Link href={`/protected/projects/${id}/models/new`} className="group">
             <div className="border border-dashed rounded-lg p-6 h-full flex flex-col items-center justify-center hover:border-primary hover:shadow-md transition-all bg-[#111827]">
               <div className="bg-muted rounded-full p-4 mb-4">
                 <PlusIcon size={24} className="text-muted-foreground group-hover:text-primary" />
@@ -155,5 +153,3 @@ export default async function ProjectPage({ params: paramsInput }: { params: { i
     </div>
   );
 }
-
-

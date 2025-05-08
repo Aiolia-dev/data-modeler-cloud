@@ -1,12 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string; modelId: string; entityId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string; entityId: string }> }
 ) {
   try {
+    const { id, modelId, entityId } = await params;
     const supabase = await createClient();
 
     // Check if user is authenticated
@@ -21,7 +22,7 @@ export async function GET(
       );
     }
 
-    console.log(`Fetching attributes for entity ${params.entityId}`);
+    console.log(`Fetching attributes for entity ${entityId}`);
 
     // Use admin client to bypass RLS policies
     const adminSupabase = createAdminClient();
@@ -30,7 +31,7 @@ export async function GET(
     const { data: attributes, error } = await adminSupabase
       .from("attributes")
       .select("*")
-      .eq("entity_id", params.entityId)
+      .eq("entity_id", entityId)
       .order("is_primary_key", { ascending: false })
       .order("created_at", { ascending: true });
       
@@ -55,10 +56,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string; modelId: string; entityId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string; entityId: string }> }
 ) {
   try {
+    const { id, modelId, entityId } = await params;
     const supabase = await createClient();
 
     // Check if user is authenticated
@@ -84,7 +86,7 @@ export async function PUT(
       );
     }
 
-    console.log(`Updating attributes for entity ${params.entityId}`);
+    console.log(`Updating attributes for entity ${entityId}`);
 
     // Use admin client to bypass RLS policies
     const adminSupabase = createAdminClient();
@@ -93,7 +95,7 @@ export async function PUT(
     const { data: existingAttributes, error: fetchError } = await adminSupabase
       .from("attributes")
       .select("id")
-      .eq("entity_id", params.entityId);
+      .eq("entity_id", entityId);
 
     if (fetchError) {
       console.error("Error fetching existing attributes:", fetchError);
@@ -166,7 +168,7 @@ export async function PUT(
             default_value: attribute.default_value,
             is_primary_key: attribute.is_primary_key,
             is_foreign_key: attribute.is_foreign_key,
-            entity_id: params.entityId,
+            entity_id: entityId,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
@@ -185,7 +187,7 @@ export async function PUT(
     const { data: updatedAttributes, error: getUpdatedError } = await adminSupabase
       .from("attributes")
       .select("*")
-      .eq("entity_id", params.entityId)
+      .eq("entity_id", entityId)
       .order("is_primary_key", { ascending: false })
       .order("created_at", { ascending: true });
 

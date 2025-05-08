@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest) {
     const adminClient = createAdminClient();
 
     // Use raw SQL query to update presence since the Supabase types may not be updated yet
-    const { error } = await adminClient.rpc('set_user_offline', {
+    const { error } = await (adminClient.rpc as any)('set_user_offline', {
       p_user_id: user_id,
       p_project_id: project_id
     });

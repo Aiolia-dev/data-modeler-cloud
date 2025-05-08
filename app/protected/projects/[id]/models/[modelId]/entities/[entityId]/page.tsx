@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/utils/supabase/admin";
 import EntityDetailClient from "./EntityDetailClient";
 
-export default async function EntityDetailPage({ params }: { params: { id: string; modelId: string; entityId: string } }) {
-  const { id: projectId, modelId, entityId } = params;
+export default async function EntityDetailPage({ params }: { params: Promise<{ id: string; modelId: string; entityId: string }> }) {
+  const { id: projectId, modelId, entityId } = await params;
   
   // Authenticate the user
   const supabase = await createClient();

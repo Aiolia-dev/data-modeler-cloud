@@ -20,7 +20,14 @@ export async function GET(req: NextRequest) {
   }
 
   // 2. Get users from Supabase Admin API
-  const userIds = [...new Set(membersData.map(m => m.user_id))];
+  // Use a different approach to get unique user IDs without using Set spread
+  const userIdMap: Record<string, boolean> = {};
+  membersData.forEach(m => {
+    if (m.user_id) {
+      userIdMap[m.user_id] = true;
+    }
+  });
+  const userIds = Object.keys(userIdMap);
 
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

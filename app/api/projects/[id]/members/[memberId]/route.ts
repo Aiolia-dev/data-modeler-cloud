@@ -1,15 +1,14 @@
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // PATCH /api/projects/[id]/members/[memberId] - Update a project member's role
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string; memberId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
-    const projectId = params.id;
-    const memberId = params.memberId;
+    const { id: projectId, memberId } = await params;
     const { role, access } = await request.json();
 
     // Validate input
@@ -123,12 +122,11 @@ export async function PATCH(
 
 // DELETE /api/projects/[id]/members/[memberId] - Remove a project member
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; memberId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
-    const projectId = params.id;
-    const memberId = params.memberId;
+    const { id: projectId, memberId } = await params;
 
     // Get the current user
     const supabase = await createClient();

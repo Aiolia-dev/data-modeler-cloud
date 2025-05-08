@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string; modelId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string }> }
 ) {
   try {
-    const { id: projectId, modelId } = params;
+    const { id: projectId, modelId } = await params;
     
     console.log(`Fetching all attributes for data model: ${modelId}`);
     

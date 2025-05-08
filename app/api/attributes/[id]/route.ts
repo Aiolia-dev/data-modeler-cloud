@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
@@ -38,11 +38,11 @@ interface UpdateAttributeRequest {
 }
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const attributeId = params.id;
+    const { id: attributeId } = await params;
     
     if (!attributeId) {
       return NextResponse.json(
@@ -89,10 +89,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: attributeId } = await params;
     const supabase = await createClient();
 
     // Check if user is authenticated
@@ -106,8 +107,6 @@ export async function PUT(
         { status: 401 }
       );
     }
-
-    const attributeId = params.id;
     
     if (!attributeId) {
       return NextResponse.json(
@@ -166,10 +165,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: attributeId } = await params;
     const supabase = await createClient();
 
     // Check if user is authenticated
@@ -183,8 +183,6 @@ export async function DELETE(
         { status: 401 }
       );
     }
-
-    const attributeId = params.id;
     
     if (!attributeId) {
       return NextResponse.json(

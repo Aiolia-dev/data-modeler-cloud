@@ -1,12 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string; modelId: string; entityId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string; entityId: string }> }
 ) {
   try {
+    const { id, modelId, entityId } = await params;
     const supabase = await createClient();
 
     // Check if user is authenticated
@@ -21,13 +22,13 @@ export async function GET(
       );
     }
 
-    console.log(`Fetching entity ${params.entityId}`);
+    console.log(`Fetching entity ${entityId}`);
 
     // Get entity details
     const { data: entity, error } = await supabase
       .from("entities")
       .select("*")
-      .eq("id", params.entityId)
+      .eq("id", entityId)
       .single();
 
     if (error) {
@@ -49,10 +50,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string; modelId: string; entityId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string; entityId: string }> }
 ) {
   try {
+    const { id, modelId, entityId } = await params;
     const supabase = await createClient();
 
     // Check if user is authenticated
@@ -78,7 +80,7 @@ export async function PUT(
       );
     }
 
-    console.log(`Updating entity ${params.entityId}:`, body);
+    console.log(`Updating entity ${entityId}:`, body);
 
     // Use the admin client to bypass RLS policies that might be causing issues
     const adminSupabase = createAdminClient();
@@ -98,7 +100,7 @@ export async function PUT(
         description: body.description,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.entityId)
+      .eq("id", entityId)
       .select()
       .single();
 
@@ -121,10 +123,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; modelId: string; entityId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string; entityId: string }> }
 ) {
   try {
+    const { id, modelId, entityId } = await params;
     const supabase = await createClient();
 
     // Check if user is authenticated
@@ -139,17 +142,17 @@ export async function DELETE(
       );
     }
 
-    console.log(`Deleting entity ${params.entityId} from model ${params.modelId} in project ${params.id}`);
+    console.log(`Deleting entity ${entityId} from model ${modelId} in project ${id}`);
 
     // Use the admin client to bypass RLS policies that might be causing issues
     const adminSupabase = createAdminClient();
     
     // First delete all attributes associated with this entity
-    console.log(`Deleting attributes for entity ${params.entityId}`);
+    console.log(`Deleting attributes for entity ${entityId}`);
     const { data: deletedAttributes, error: attributesError } = await adminSupabase
       .from("attributes")
       .delete()
-      .eq("entity_id", params.entityId)
+      .eq("entity_id", entityId)
       .select();
 
     if (attributesError) {
@@ -163,11 +166,11 @@ export async function DELETE(
     console.log(`Successfully deleted ${deletedAttributes?.length || 0} attributes`);
 
     // Then delete the entity itself
-    console.log(`Deleting entity ${params.entityId}`);
+    console.log(`Deleting entity ${entityId}`);
     const { data: deletedEntity, error } = await adminSupabase
       .from("entities")
       .delete()
-      .eq("id", params.entityId)
+      .eq("id", entityId)
       .select();
 
     if (error) {

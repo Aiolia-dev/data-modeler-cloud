@@ -15,7 +15,9 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     
     // First check if current user has permission (is already a superuser or is the same user)
-    const { data: { session, user }, error: authError } = await supabase.auth.getSession();
+    const { data, error: authError } = await supabase.auth.getSession();
+    const session = data.session;
+    const user = session?.user;
     
     if (authError || !session || !user) {
       return NextResponse.json(

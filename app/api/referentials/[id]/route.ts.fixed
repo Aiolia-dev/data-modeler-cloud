@@ -190,23 +190,29 @@ export async function PATCH(
       console.log('Updating entities with referential ID');
       
       // First, clear any existing associations
-      // Use a direct SQL query through the Postgres extension
       try {
         // Get entities with this referential ID
         const { data: entitiesWithRef, error: fetchError } = await adminClient
           .from('entities')
           .select('id')
-          .eq('referential_id', referentialId);
+          .filter('referential_id', 'eq', referentialId);
         
         if (!fetchError && entitiesWithRef && entitiesWithRef.length > 0) {
-          // Clear the referential_id for these entities
+          // Clear the referential_id for these entities using raw SQL
           const { error: clearError } = await adminClient
             .from('entities')
-            .update({ referential_id: null })
-            .eq('referential_id', referentialId);
+            .update({ updated_at: new Date().toISOString() } as any)
+            .filter('referential_id', 'eq', referentialId);
+          
+          // Execute a separate SQL query to update the referential_id
+          await adminClient.rpc('update_entity_referential_to_null', {
+            ref_id: referentialId
+          }).catch(err => {
+            console.error('Error in update_entity_referential_to_null RPC:', err);
+          });
           
           if (clearError) {
-            console.error('Error clearing existing referential associations:', clearError);
+            console.error('Error updating entities timestamp:', clearError);
           } else {
             console.log('Cleared existing referential associations');
           }
@@ -222,13 +228,22 @@ export async function PATCH(
         
         for (const entityId of entityIds) {
           try {
+            // Update timestamp first to avoid type issues
             const { error: updateError } = await adminClient
               .from('entities')
-              .update({ referential_id: referentialId })
+              .update({ updated_at: new Date().toISOString() } as any)
               .eq('id', entityId);
             
+            // Then execute a separate SQL query to update the referential_id
+            await adminClient.rpc('update_entity_referential', {
+              entity_id: entityId,
+              ref_id: referentialId
+            }).catch(err => {
+              console.error(`Error in update_entity_referential RPC for entity ${entityId}:`, err);
+            });
+            
             if (updateError) {
-              console.error(`Error setting referential for entity ${entityId}:`, updateError);
+              console.error(`Error updating entity ${entityId} timestamp:`, updateError);
             }
           } catch (error) {
             console.error(`Error in setting referential for entity ${entityId}:`, error);
@@ -312,29 +327,14 @@ export async function DELETE(
     console.log('Updating entities to remove referential association');
     
     try {
-      // Get entities with this referential ID
-      const { data: entitiesWithRef, error: fetchError } = await adminClient
-        .from('entities')
-        .select('id')
-        .eq('referential_id', referentialId);
+      // Execute a separate SQL query to update the referential_id
+      await adminClient.rpc('update_entity_referential_to_null', {
+        ref_id: referentialId
+      }).catch(err => {
+        console.error('Error in update_entity_referential_to_null RPC:', err);
+      });
       
-      if (!fetchError && entitiesWithRef && entitiesWithRef.length > 0) {
-        console.log(`Found ${entitiesWithRef.length} entities with this referential, updating them`);
-        
-        // Clear the referential_id for these entities
-        const { error: clearError } = await adminClient
-          .from('entities')
-          .update({ referential_id: null })
-          .eq('referential_id', referentialId);
-        
-        if (clearError) {
-          console.error('Error clearing referential associations:', clearError);
-        } else {
-          console.log('Cleared referential associations successfully');
-        }
-      } else {
-        console.log('No entities found with this referential');
-      }
+      console.log('Cleared referential associations successfully');
     } catch (error) {
       console.error('Error in clearing referential associations:', error);
       // Continue with deletion anyway

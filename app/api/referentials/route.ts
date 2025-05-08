@@ -174,13 +174,13 @@ export async function POST(request: NextRequest) {
       console.log('Referential created successfully:', referential);
       
       // If entityIds were provided, update those entities to associate them with this referential
-      if (entityIds && Array.isArray(entityIds) && entityIds.length > 0) {
+      if (entityIds && Array.isArray(entityIds) && entityIds.length > 0 && referential && 'id' in referential) {
         console.log(`Updating ${entityIds.length} entities with referential_id: ${referential.id}`);
         
         try {
           const { error: updateError } = await adminClient
             .from('entities')
-            .update({ referential_id: referential.id })
+            .update({ referential_id: referential.id as string })
             .in('id', entityIds);
           
           if (updateError) {

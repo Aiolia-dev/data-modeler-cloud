@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
  * This is needed to maintain the user's session when making fetch requests from server components
  */
 export async function getAuthCookie(): Promise<string> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabaseCookie = cookieStore.get('sb-auth-token');
   
   if (!supabaseCookie) {

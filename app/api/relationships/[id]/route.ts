@@ -1,12 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const relationshipId = params.id;
+    const { id } = await params;
+    const relationshipId = id;
     
     if (!relationshipId) {
       return NextResponse.json(
@@ -53,7 +54,7 @@ export async function DELETE(
       message: `Relationship ${relationshipId} deleted successfully`
     });
   } catch (error: any) {
-    console.error(`Error in DELETE /api/relationships/${params.id}:`, error);
+    console.error(`Error in DELETE /api/relationships/[id]:`, error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

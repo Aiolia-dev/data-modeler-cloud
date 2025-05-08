@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   console.log('GET /api/attributes - Fetching attributes');
   
   try {
@@ -25,17 +25,17 @@ export async function GET(request: Request) {
     // Create admin client to bypass RLS
     const adminClient = createAdminClient();
     
-    // Build the query
-    let query = adminClient.from('attributes').select(countOnly ? 'id' : '*').eq('entity_id', entityId);
-    
-    // Add foreign key filter if requested
-    if (foreignKeyOnly) {
-      query = query.eq('is_foreign_key', true);
-    }
-    
     // If count only, get the count
     if (countOnly) {
-      const { data, error, count } = await query.count('exact');
+      // First get all matching attributes
+      let query = adminClient.from('attributes').select('id').eq('entity_id', entityId);
+      
+      // Add foreign key filter if requested
+      if (foreignKeyOnly) {
+        query = query.eq('is_foreign_key', true);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error('Error counting attributes:', error);
@@ -45,10 +45,18 @@ export async function GET(request: Request) {
         );
       }
       
+      const count = data ? data.length : 0;
       console.log(`Successfully counted ${count} attributes for entity ${entityId}`);
-      return NextResponse.json({ count: count || 0 });
+      return NextResponse.json({ count });
     } else {
       // Otherwise get the full data
+      let query = adminClient.from('attributes').select('*').eq('entity_id', entityId);
+      
+      // Add foreign key filter if requested
+      if (foreignKeyOnly) {
+        query = query.eq('is_foreign_key', true);
+      }
+      
       const { data: attributes, error } = await query
         .order('is_primary_key', { ascending: false })
         .order('name');
@@ -74,7 +82,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   console.log('POST /api/attributes - Creating a new attribute');
   
   try {
@@ -231,7 +239,8 @@ export async function POST(request: Request) {
           source_entity_id: entityId,
           target_entity_id: referencedEntityId,
           name: name,
-          relationship_type: 'one-to-many', // Default, can be customized later
+          // Use a specific string literal as required by the type
+          relationship_type: "one-to-many" as "one-to-many",
           source_attribute_id: attribute.id,
         };
         const { error: relError } = await adminClient

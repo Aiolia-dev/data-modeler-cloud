@@ -40,6 +40,10 @@ type PermissionContextType = {
   hasPermission: (action: PermissionAction, targetProjectId?: string) => boolean;
   refreshPermissions: () => Promise<void>;
   forceRefreshPermissions: () => Promise<void>;
+  // Additional properties for backward compatibility
+  isSuperuser: boolean;
+  userId: string | null;
+  setCurrentProjectId: (projectId: string | null) => void;
 };
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);

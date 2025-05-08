@@ -6,15 +6,15 @@ import { Database } from '@/types/supabase';
 // PATCH /api/comments/[id] - Update a comment
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const commentId = params.id;
-  
-  if (!commentId) {
-    return NextResponse.json({ error: 'Comment ID is required' }, { status: 400 });
-  }
-  
   try {
+    const { id: commentId } = await params;
+    
+    if (!commentId) {
+      return NextResponse.json({ error: 'Comment ID is required' }, { status: 400 });
+    }
+    
     // Get the request body
     const body = await request.json();
     const { content, position_x, position_y } = body;
@@ -97,15 +97,15 @@ export async function PATCH(
 // DELETE /api/comments/[id] - Delete a comment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const commentId = params.id;
-  
-  if (!commentId) {
-    return NextResponse.json({ error: 'Comment ID is required' }, { status: 400 });
-  }
-  
   try {
+    const { id: commentId } = await params;
+    
+    if (!commentId) {
+      return NextResponse.json({ error: 'Comment ID is required' }, { status: 400 });
+    }
+    
     // Use a direct approach with the service role key to bypass cookie issues
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

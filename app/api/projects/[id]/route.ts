@@ -1,17 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`GET /api/projects/${projectId} - Fetching project details`);
-  
   try {
+    const { id } = await params;
+    const projectId = id;
+    console.log(`GET /api/projects/${projectId} - Fetching project details`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -71,7 +70,7 @@ export async function GET(
     console.log(`Project and ${dataModels.length} data models fetched successfully`);
     return NextResponse.json({ project, dataModels });
   } catch (error) {
-    console.error(`Error fetching project ${projectId}:`, error);
+    console.error(`Error fetching project [id]:`, error);
     return NextResponse.json(
       { error: 'Failed to fetch project details', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -80,15 +79,14 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`PATCH /api/projects/${projectId} - Updating project details`);
-  
   try {
+    const { id } = await params;
+    const projectId = id;
+    console.log(`PATCH /api/projects/${projectId} - Updating project details`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -136,16 +134,17 @@ export async function PATCH(
     }
     
     // Prepare update data
-    const updateData: { name?: string; description?: string | null } = {};
-    if (name !== undefined) updateData.name = name;
+    const updateData: Record<string, any> = {};
+    if (name) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     
-    console.log(`Updating project ${projectId}:`, updateData);
+    // Add updated_at timestamp
+    updateData.updated_at = new Date().toISOString();
     
     // Use admin client to bypass RLS policies
     const adminClient = createAdminClient();
     
-    // Update project
+    // Update the project
     const { data: updatedProject, error: updateError } = await adminClient
       .from('projects')
       .update(updateData)
@@ -164,7 +163,7 @@ export async function PATCH(
     console.log('Project updated successfully:', updatedProject);
     return NextResponse.json({ project: updatedProject });
   } catch (error) {
-    console.error(`Error updating project ${projectId}:`, error);
+    console.error(`Error updating project [id]:`, error);
     return NextResponse.json(
       { error: 'Failed to update project', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -173,15 +172,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`DELETE /api/projects/${projectId} - Deleting project`);
-  
   try {
+    const { id } = await params;
+    const projectId = id;
+    console.log(`DELETE /api/projects/${projectId} - Deleting project`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -208,7 +206,7 @@ export async function DELETE(
     // Use admin client to bypass RLS policies
     const adminClient = createAdminClient();
     
-    // First, check if the user is the creator of the project
+    // Check if the project exists and belongs to the user
     const { data: project, error: projectError } = await adminClient
       .from('projects')
       .select('created_by')
@@ -335,7 +333,7 @@ export async function DELETE(
     console.log('Project deleted successfully');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`Error deleting project ${projectId}:`, error);
+    console.error(`Error deleting project [id]:`, error);
     return NextResponse.json(
       { error: 'Failed to delete project', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

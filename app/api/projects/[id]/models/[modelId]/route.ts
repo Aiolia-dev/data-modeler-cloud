@@ -1,17 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string; modelId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id, modelId } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`GET /api/projects/${projectId}/models/${modelId} - Fetching data model details`);
-  
   try {
+    const { id, modelId } = await params;
+    const projectId = id;
+    console.log(`GET /api/projects/${projectId}/models/${modelId} - Fetching data model details`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -78,7 +77,7 @@ export async function GET(
       entities: entities || []
     });
   } catch (error) {
-    console.error(`Error in GET /api/projects/${projectId}/models/${modelId}:`, error);
+    console.error(`Error in GET /api/projects/[id]/models/[modelId]:`, error);
     return NextResponse.json(
       { error: 'Failed to fetch data model details', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -87,15 +86,14 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string; modelId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id, modelId } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`PUT /api/projects/${projectId}/models/${modelId} - Updating data model`);
-  
   try {
+    const { id, modelId } = await params;
+    const projectId = id;
+    console.log(`PUT /api/projects/${projectId}/models/${modelId} - Updating data model`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -144,7 +142,7 @@ export async function PUT(
     // Use the admin client to bypass RLS policies
     const adminClient = createAdminClient();
     
-    // Check if data model exists and belongs to the project
+    // Check if the data model exists and belongs to the project
     const { data: existingModel, error: checkError } = await adminClient
       .from('data_models')
       .select('*')
@@ -167,18 +165,15 @@ export async function PUT(
     }
     
     // Update the data model
-    const updateData: any = {
-      name,
-      description: description || null,
-    };
-    
-    if (version) {
-      updateData.version = version;
-    }
-    
     const { data: updatedModel, error: updateError } = await adminClient
       .from('data_models')
-      .update(updateData)
+      .update({
+        name,
+        description: description || null,
+        version: version || existingModel.version,
+        updated_at: new Date().toISOString(),
+        updated_by: user.id
+      })
       .eq('id', modelId)
       .select()
       .single();
@@ -194,7 +189,7 @@ export async function PUT(
     console.log('Data model updated successfully:', updatedModel);
     return NextResponse.json({ dataModel: updatedModel });
   } catch (error) {
-    console.error(`Error in PUT /api/projects/${projectId}/models/${modelId}:`, error);
+    console.error(`Error in PUT /api/projects/[id]/models/[modelId]:`, error);
     return NextResponse.json(
       { error: 'Failed to update data model', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -203,15 +198,14 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; modelId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id, modelId } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`DELETE /api/projects/${projectId}/models/${modelId} - Deleting data model`);
-  
   try {
+    const { id, modelId } = await params;
+    const projectId = id;
+    console.log(`DELETE /api/projects/${projectId}/models/${modelId} - Deleting data model`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -238,7 +232,7 @@ export async function DELETE(
     // Use the admin client to bypass RLS policies
     const adminClient = createAdminClient();
     
-    // Check if data model exists and belongs to the project
+    // Check if the data model exists and belongs to the project
     const { data: existingModel, error: checkError } = await adminClient
       .from('data_models')
       .select('*')
@@ -350,7 +344,7 @@ export async function DELETE(
     console.log('Data model deleted successfully');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`Error in DELETE /api/projects/${projectId}/models/${modelId}:`, error);
+    console.error(`Error in DELETE /api/projects/[id]/models/[modelId]:`, error);
     return NextResponse.json(
       { error: 'Failed to delete data model', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

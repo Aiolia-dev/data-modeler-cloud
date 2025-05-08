@@ -1,17 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string; modelId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id, modelId } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`GET /api/projects/${projectId}/models/${modelId}/entities - Fetching entities`);
-  
   try {
+    const { id, modelId } = await params;
+    const projectId = id;
+    console.log(`GET /api/projects/${projectId}/models/${modelId}/entities - Fetching entities`);
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -64,15 +63,14 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string; modelId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; modelId: string }> }
 ) {
-  // Use Promise.resolve to properly await the params object
-  const { id, modelId } = await Promise.resolve(params);
-  const projectId = id;
-  console.log(`POST /api/projects/${projectId}/models/${modelId}/entities - Creating a new entity`);
-  
   try {
+    const { id, modelId } = await params;
+    const projectId = id;
+    console.log(`POST /api/projects/${projectId}/models/${modelId}/entities - Creating a new entity`);
+    
     const supabase = await createClient();
     
     // Get the current user

@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; roleId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; roleId: string }> }
 ) {
   try {
-    const projectId = params.id;
-    const roleId = params.roleId;
+    const { id, roleId } = await params;
+    const projectId = id;
     
     if (!projectId || !roleId) {
       return NextResponse.json(
@@ -44,12 +44,12 @@ export async function DELETE(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string; roleId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; roleId: string }> }
 ) {
   try {
-    const projectId = params.id;
-    const roleId = params.roleId;
+    const { id, roleId } = await params;
+    const projectId = id;
     
     if (!projectId || !roleId) {
       return NextResponse.json(

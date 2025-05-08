@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ReactFlow, {
   Background,
@@ -113,11 +113,20 @@ const FullscreenDiagram = () => {
   );
 };
 
-// Wrap the component with ReactFlowProvider
+// Loading fallback component
+const DiagramLoadingFallback = () => (
+  <div className="flex items-center justify-center h-screen w-screen bg-gray-900 text-white">
+    <div className="text-xl">Loading diagram...</div>
+  </div>
+);
+
+// Wrap the component with ReactFlowProvider and Suspense
 const FullscreenDiagramPage = () => {
   return (
     <ReactFlowProvider>
-      <FullscreenDiagram />
+      <Suspense fallback={<DiagramLoadingFallback />}>
+        <FullscreenDiagram />
+      </Suspense>
     </ReactFlowProvider>
   );
 };
