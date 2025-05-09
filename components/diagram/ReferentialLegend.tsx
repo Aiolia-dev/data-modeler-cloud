@@ -3,24 +3,34 @@
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Referential {
   id: string;
   name: string;
   color: string;
   entityCount?: number;
+  isSelected?: boolean;
 }
 
 interface ReferentialLegendProps {
   referentials: Referential[];
   visible: boolean;
+  onToggleReferential?: (id: string) => void;
 }
 
-export function ReferentialLegend({ referentials, visible }: ReferentialLegendProps) {
+export function ReferentialLegend({ referentials, visible, onToggleReferential }: ReferentialLegendProps) {
   // Only hide if not visible, but show even when there are no referentials
   if (!visible) {
     return null;
   }
+  
+  // Handler for clicking on a referential square
+  const handleReferentialClick = (id: string) => {
+    if (onToggleReferential) {
+      onToggleReferential(id);
+    }
+  };
 
   return (
     <div className="absolute left-0 top-[80px] bottom-0 w-48 bg-gray-900/80 backdrop-blur-sm border-r border-gray-800 z-10 overflow-hidden rounded-tr-md">
@@ -78,11 +88,29 @@ export function ReferentialLegend({ referentials, visible }: ReferentialLegendPr
             {referentials.length > 0 ? (
               referentials.map((ref) => (
                 <div key={ref.id} className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-sm flex-shrink-0" 
-                    style={{ backgroundColor: ref.color || '#374151' }}
-                  />
-                  <span className="text-xs text-gray-300 truncate" title={ref.name}>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className="w-4 h-4 rounded-sm flex-shrink-0 cursor-pointer transition-all duration-200 hover:opacity-80" 
+                          style={{
+                            backgroundColor: ref.isSelected === false ? 'transparent' : ref.color || '#374151',
+                            border: `1px solid ${ref.color || '#374151'}`,
+                          }}
+                          onClick={() => handleReferentialClick(ref.id)}
+                          role="button"
+                          aria-label={`Toggle visibility of ${ref.name} entities`}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{ref.isSelected === false ? `Show ${ref.name} entities` : `Hide ${ref.name} entities`}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <span 
+                    className={`text-xs truncate ${ref.isSelected === false ? 'text-gray-500 opacity-40' : 'text-gray-300'}`} 
+                    title={ref.name}
+                  >
                     {ref.name}
                   </span>
                   {ref.entityCount !== undefined && (

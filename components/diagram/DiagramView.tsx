@@ -2286,9 +2286,45 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
                 id: ref.id,
                 name: ref.name,
                 color: referentialColors[ref.id] || '#374151',
-                entityCount: ref.entityCount
+                entityCount: ref.entityCount,
+                isSelected: ref.isSelected
               }))} 
               visible={showReferentialLegend && !isSearchActive}
+              onToggleReferential={(id) => {
+                // Toggle the selected state of the referential
+                setReferentials(refs => refs.map(ref => 
+                  ref.id === id ? { ...ref, isSelected: !ref.isSelected } : ref
+                ));
+                
+                // Get the referential that was toggled
+                const referential = referentials.find(r => r.id === id);
+                const newIsSelected = referential ? !referential.isSelected : false;
+                
+                // Find entities to hide/show based on referential selection
+                const entitiesToToggle: string[] = [];
+                
+                // Find entities belonging to this referential
+                Object.entries(entityReferentialMap)
+                  .filter(([entityId, refId]) => refId === id)
+                  .forEach(([entityId]) => entitiesToToggle.push(entityId));
+                
+                // Update hidden entities state
+                setHiddenEntityIds(prev => {
+                  if (newIsSelected) {
+                    // Show entities - remove from hidden list
+                    return prev.filter(entityId => !entitiesToToggle.includes(entityId));
+                  } else {
+                    // Hide entities - add to hidden list if not already there
+                    const newHiddenIds = [...prev];
+                    entitiesToToggle.forEach(entityId => {
+                      if (!newHiddenIds.includes(entityId)) {
+                        newHiddenIds.push(entityId);
+                      }
+                    });
+                    return newHiddenIds;
+                  }
+                });
+              }}
             />
             <Panel position="top-left" className="m-4">
               <DiagramSearch 
