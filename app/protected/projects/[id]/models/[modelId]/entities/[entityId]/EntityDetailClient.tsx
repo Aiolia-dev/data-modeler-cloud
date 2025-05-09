@@ -68,6 +68,11 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Tab count state
+  const [entityCount, setEntityCount] = useState(0);
+  const [referentialCount, setReferentialCount] = useState(0);
+  const [ruleCount, setRuleCount] = useState(0);
+  
   // Handle tab navigation
   const handleTabChange = (value: string) => {
     if (value !== 'entities') {
@@ -107,9 +112,24 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
           refData = await refRes.json();
         }
         
+        // Fetch all entities to get count
+        const allEntitiesRes = await fetch(`/api/projects/${projectId}/models/${modelId}/entities`);
+        if (allEntitiesRes.ok) {
+          const allEntitiesData = await allEntitiesRes.json();
+          setEntityCount(allEntitiesData.entities?.length || 0);
+        }
+        
+        // Fetch rules to get count
+        const rulesRes = await fetch(`/api/rules?dataModelId=${modelId}`);
+        if (rulesRes.ok) {
+          const rulesData = await rulesRes.json();
+          setRuleCount(rulesData?.length || 0);
+        }
+        
         setEntity(entityData.entity);
         setAttributes(attrData.attributes || []);
         setReferentials(refData.referentials || []);
+        setReferentialCount(refData.referentials?.length || 0);
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -206,14 +226,22 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
       {/* Tabs for navigation - custom implementation that matches the visual style */}
       <div className="w-full">
         <div className="grid grid-cols-5 mb-8 bg-gray-800 rounded-md">
-          <button className="py-2 px-4 text-sm font-medium bg-gray-700 text-white rounded-sm">
-            Entities
+          <button className="py-2 px-4 text-sm font-medium bg-gray-700 text-white rounded-sm flex items-center gap-1.5">
+            Entities {entityCount > 0 && (
+              <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
+                {entityCount}
+              </span>
+            )}
           </button>
           <button 
-            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm"
+            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm flex items-center gap-1.5"
             onClick={() => handleTabChange('referentials')}
           >
-            Referentials
+            Referentials {referentialCount > 0 && (
+              <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
+                {referentialCount}
+              </span>
+            )}
           </button>
           <button 
             className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm"
@@ -222,10 +250,14 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
             Diagram
           </button>
           <button 
-            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm"
+            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm flex items-center gap-1.5"
             onClick={() => handleTabChange('rules')}
           >
-            Rules
+            Rules {ruleCount > 0 && (
+              <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
+                {ruleCount}
+              </span>
+            )}
           </button>
           <button 
             className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm"

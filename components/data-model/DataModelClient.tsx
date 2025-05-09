@@ -391,17 +391,29 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid grid-cols-5 mb-8 bg-gray-800">
-            <TabsTrigger value="entities" className="data-[state=active]:bg-gray-700">
-              Entities {entityCount > 0 ? `(${entityCount})` : ''}
+            <TabsTrigger value="entities" className="data-[state=active]:bg-gray-700 flex items-center gap-1.5">
+              Entities {entityCount > 0 && (
+                <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
+                  {entityCount}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="referentials" className="data-[state=active]:bg-gray-700">
-              Referentials {referentialCount > 0 ? `(${referentialCount})` : ''}
+            <TabsTrigger value="referentials" className="data-[state=active]:bg-gray-700 flex items-center gap-1.5">
+              Referentials {referentialCount > 0 && (
+                <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
+                  {referentialCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="diagram" className="data-[state=active]:bg-gray-700">
               Diagram
             </TabsTrigger>
-            <TabsTrigger value="rules" className="data-[state=active]:bg-gray-700">
-              Rules {ruleCount > 0 ? `(${ruleCount})` : ''}
+            <TabsTrigger value="rules" className="data-[state=active]:bg-gray-700 flex items-center gap-1.5">
+              Rules {ruleCount > 0 && (
+                <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
+                  {ruleCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="sql" className="data-[state=active]:bg-gray-700">
               SQL
