@@ -77,6 +77,7 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
   // State for entity creation modal
   const [showEntityModal, setShowEntityModal] = useState(false);
   const [preSelectedEntityIds, setPreSelectedEntityIds] = useState<string[]>([]);
+  const [preSelectedEntityType, setPreSelectedEntityType] = useState<'standard' | 'join'>('standard');
   
   // State for referential selection modal
   const [showReferentialModal, setShowReferentialModal] = useState(false);
@@ -1138,6 +1139,26 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
     return hasPermission('create', projectId);
   }, [hasPermission, projectId]);
   
+  // Handler for creating a join entity from context menu
+  const handleCreateJoinEntity = () => {
+    if (!canCreate) return;
+    
+    // Set initial form data with entity type set to 'join'
+    const initialData = {
+      name: '',
+      description: '',
+      primaryKeyType: 'composite',
+      primaryKeyName: 'Composite Key',
+      entityType: 'join',
+      joinEntities: [],
+      referential_id: null,
+    };
+    
+    // Open the entity modal with join entity tab preselected
+    setPreSelectedEntityType('join');
+    setShowEntityModal(true);
+  };
+
   // Options for the circular menu on empty canvas
   const circularMenuOptions = React.useMemo(() => [
     {
@@ -1159,12 +1180,12 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
       onClick: undefined,
     },
     {
-      key: 'export',
-      icon: <Share2 size={22} />, // Export Model
-      label: 'Export Model',
-      onClick: undefined,
+      key: 'joinEntity',
+      icon: <Link size={22} className={canCreate ? '' : 'opacity-50'} />, // Create Join Entity
+      label: canCreate ? 'Create Join Entity' : 'Create Join Entity (Requires Editor Role)',
+      onClick: canCreate ? handleCreateJoinEntity : undefined,
     },
-  ], [handleCreateEntity, handleAddComment]);
+  ], [handleCreateEntity, handleAddComment, canCreate]);
 
   // Use the predefined node and edge types directly
   // Do NOT recreate these objects inside the component

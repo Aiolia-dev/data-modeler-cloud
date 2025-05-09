@@ -83,6 +83,36 @@ export function EntityModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedEntities, setSelectedEntities] = useState<Entity[]>([]);
+  const [activeTab, setActiveTab] = useState<"standard" | "join">("standard");
+
+  useEffect(() => {
+    if (open) {
+      // If we have initial data, use it
+      if (initialData) {
+        setFormData(initialData);
+        
+        // If initialData specifies entityType as 'join', ensure we're on the join tab
+        if (initialData.entityType === 'join') {
+          setActiveTab('join');
+        } else {
+          setActiveTab('standard');
+        }
+      } else {
+        // Otherwise reset to defaults
+        setFormData({
+          name: "",
+          description: "",
+          primaryKeyType: "auto_increment",
+          primaryKeyName: "id",
+          entityType: "standard",
+          joinEntities: [],
+          referential_id: null,
+        });
+        setActiveTab('standard');
+      }
+      setError(null);
+    }
+  }, [open, initialData]);
 
   // Initialize selected entities from initialData.joinEntities when the modal opens
   useEffect(() => {
