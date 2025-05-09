@@ -108,7 +108,7 @@ export function ReferentialLegend({ referentials, visible, onToggleReferential }
                     </Tooltip>
                   </TooltipProvider>
                   <span 
-                    className={`text-xs truncate ${ref.isSelected === false ? 'text-gray-500 opacity-40' : 'text-gray-300'}`} 
+                    className={`text-xs truncate ${ref.isSelected === false ? 'text-gray-500 opacity-75' : 'text-gray-300'}`} 
                     title={ref.name}
                   >
                     {ref.name}
