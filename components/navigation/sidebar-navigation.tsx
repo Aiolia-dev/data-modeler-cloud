@@ -16,6 +16,8 @@ import { ImportModelModal } from "@/components/data-model/import-model-modal";
 import { ExportModelModal } from "@/components/data-model/export-model-modal";
 import { CreateProjectModal } from "@/components/project/create-project-modal";
 import { CreateDataModelModal } from "@/components/data-model/create-data-model-modal";
+import { usePermissions } from "@/context/permission-context";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +45,43 @@ interface DataModel {
 
 interface SidebarNavigationProps {
   collapsed?: boolean;
+}
+
+// Component for the New Data Model button with permission check
+function NewDataModelButton({ projectId, onClick }: { projectId: string, onClick: () => void }) {
+  const { hasPermission } = usePermissions();
+  const canCreateDataModel = hasPermission('create', projectId);
+  
+  if (canCreateDataModel) {
+    return (
+      <button 
+        onClick={onClick}
+        className="flex items-center py-1.5 px-2 text-sm text-gray-400 hover:bg-gray-800/50 rounded-md w-full text-left"
+      >
+        <PlusIcon size={14} className="mr-2 flex-shrink-0" />
+        <span className="truncate">New Data Model</span>
+      </button>
+    );
+  } else {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              disabled
+              className="flex items-center py-1.5 px-2 text-sm text-gray-500 opacity-50 cursor-not-allowed rounded-md w-full text-left"
+            >
+              <PlusIcon size={14} className="mr-2 flex-shrink-0" />
+              <span className="truncate">New Data Model</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>You don't have permission to create data models</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 }
 
 export default function SidebarNavigation({ collapsed }: SidebarNavigationProps) {
@@ -419,16 +458,13 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
                       
                       {/* Add new data model button */}
                       <li>
-                        <button 
+                        <NewDataModelButton 
+                          projectId={project.id} 
                           onClick={() => {
                             setSelectedProjectForModel(project.id);
                             setCreateDataModelModalOpen(true);
                           }}
-                          className="flex items-center py-1.5 px-2 text-sm text-gray-400 hover:bg-gray-800/50 rounded-md w-full text-left"
-                        >
-                          <PlusIcon size={14} className="mr-2 flex-shrink-0" />
-                          <span className="truncate">New Data Model</span>
-                        </button>
+                        />
                       </li>
                     </ul>
                   )}
