@@ -401,7 +401,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
           </TabsList>
 
           <TabsContent value="entities" className="mt-0">
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div className="bg-gray-800 rounded-lg py-6 px-0 border border-gray-700">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Entities</h2>
                 <div className="flex gap-2">
