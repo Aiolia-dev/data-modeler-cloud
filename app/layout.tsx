@@ -48,7 +48,7 @@ export default function RootLayout({
               <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                 <div className="w-full px-5 flex justify-between items-center p-3 text-sm">
                   <div className="flex gap-5 items-center font-semibold">
-                    <Link href={"/"}>DataModel Pro</Link>
+                    <Link href={"/"}></Link>
                     {/* DeployButton removed */}
                   </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
