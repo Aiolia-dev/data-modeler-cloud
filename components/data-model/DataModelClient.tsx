@@ -103,6 +103,11 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   const [entities, setEntities] = useState<any[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(true);
   const [attributeCounts, setAttributeCounts] = useState<Record<string, number>>({});
+  
+  // Tab count state
+  const [entityCount, setEntityCount] = useState(0);
+  const [referentialCount, setReferentialCount] = useState(0);
+  const [ruleCount, setRuleCount] = useState(0);
   const [foreignKeyCounts, setForeignKeyCounts] = useState<Record<string, number>>({});
   const [relationshipCounts, setRelationshipCounts] = useState<Record<string, number>>({});
   const [ruleCounts, setRuleCounts] = useState<Record<string, number>>({});
@@ -169,10 +174,12 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
         }
         
         const data = await response.json();
-        setEntities(data.entities || []);
+        const entitiesData = data.entities || [];
+        setEntities(entitiesData);
+        setEntityCount(entitiesData.length);
         
         // Initialize counts
-        const entityIds = data.entities.map((e: any) => e.id);
+        const entityIds = entitiesData.map((e: any) => e.id);
         
         // Initialize loading states
         const loadingState: Record<string, boolean> = {};
@@ -230,6 +237,9 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
           const rulesData = await rulesRes.json();
           const allRules = rulesData || [];
           
+          // Set the total rule count for the tab
+          setRuleCount(allRules.length);
+          
           // Count rules for each entity
           entityIds.forEach((entityId: string) => {
             const entityRules = allRules.filter((rule: any) => rule.entity_id === entityId);
@@ -280,7 +290,9 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
         const response = await fetch(`/api/referentials?dataModelId=${modelId}`);
         if (response.ok) {
           const data = await response.json();
-          setAvailableReferentials(data.referentials || []);
+          const referentialsData = data.referentials || [];
+          setAvailableReferentials(referentialsData);
+          setReferentialCount(referentialsData.length);
         }
       } catch (err) {
         console.error('Error fetching referentials:', err);
@@ -380,16 +392,16 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid grid-cols-5 mb-8 bg-gray-800">
             <TabsTrigger value="entities" className="data-[state=active]:bg-gray-700">
-              Entities
+              Entities {entityCount > 0 ? `(${entityCount})` : ''}
             </TabsTrigger>
             <TabsTrigger value="referentials" className="data-[state=active]:bg-gray-700">
-              Referentials
+              Referentials {referentialCount > 0 ? `(${referentialCount})` : ''}
             </TabsTrigger>
             <TabsTrigger value="diagram" className="data-[state=active]:bg-gray-700">
               Diagram
             </TabsTrigger>
             <TabsTrigger value="rules" className="data-[state=active]:bg-gray-700">
-              Rules
+              Rules {ruleCount > 0 ? `(${ruleCount})` : ''}
             </TabsTrigger>
             <TabsTrigger value="sql" className="data-[state=active]:bg-gray-700">
               SQL
