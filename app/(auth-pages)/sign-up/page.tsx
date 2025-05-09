@@ -62,7 +62,7 @@ export default function Signup(props: {
               name="email" 
               placeholder="you@example.com" 
               required 
-              className="pl-10 bg-gray-800 border-gray-700 text-white" 
+              className="pl-10 bg-gray-800 border-gray-700 text-white auth-input" 
             />
           </div>
         </div>
@@ -82,7 +82,7 @@ export default function Signup(props: {
               placeholder="Create a password"
               minLength={10}
               required
-              className="pl-10 bg-gray-800 border-gray-700 text-white"
+              className="pl-10 bg-gray-800 border-gray-700 text-white auth-input"
               value={password}
               onChange={(e) => {
                 const newPassword = e.target.value;

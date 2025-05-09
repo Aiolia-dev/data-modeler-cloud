@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
 import "../styles/custom-inputs.css";
+import "../styles/form-fixes.css"; // Fix for flashy red background on invalid inputs
 import { SettingsProvider } from "@/contexts/settings-context";
 import { PermissionProvider } from "@/context/permission-context";
 

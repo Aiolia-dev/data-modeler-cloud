@@ -28,7 +28,7 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
               name="email" 
               placeholder="you@example.com" 
               required 
-              className="pl-10 bg-gray-800 border-gray-700 text-white" 
+              className="pl-10 bg-gray-800 border-gray-700 text-white auth-input" 
             />
           </div>
         </div>
@@ -55,7 +55,7 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
               name="password"
               placeholder="Enter your password"
               required
-              className="pl-10 bg-gray-800 border-gray-700 text-white"
+              className="pl-10 bg-gray-800 border-gray-700 text-white auth-input"
             />
           </div>
         </div>

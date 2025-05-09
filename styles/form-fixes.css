@@ -1,0 +1,85 @@
+/* Fix for flashy red background on invalid input fields */
+
+/* Remove the default red background on invalid inputs */
+input:invalid,
+input:-moz-ui-invalid,
+input:-webkit-autofill:invalid {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Firefox specific fix */
+input:-moz-ui-invalid {
+  box-shadow: none !important;
+}
+
+/* Chrome/Safari specific fix */
+input:invalid,
+input:-webkit-autofill:invalid {
+  background-color: transparent !important;
+  -webkit-box-shadow: none !important;
+}
+
+/* For autofill in Chrome */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--bg-input, #1a1f2c) inset !important;
+  -webkit-text-fill-color: var(--text-color, white) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* For the sign-in form specifically */
+.bg-gray-900 input:invalid,
+.bg-gray-900 input:-moz-ui-invalid,
+.bg-gray-900 input:-webkit-autofill:invalid,
+.auth-input:invalid,
+.auth-input:-moz-ui-invalid,
+.auth-input:-webkit-autofill:invalid {
+  background-color: var(--bg-input, #1a1f2c) !important;
+}
+
+/* Specific styling for auth inputs to prevent the flashy red background */
+.auth-input {
+  background-color: #1a1f2c !important;
+}
+
+.auth-input:focus {
+  background-color: #1a1f2c !important;
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* For autofill in the sign-in form */
+.bg-gray-900 input:-webkit-autofill,
+.bg-gray-900 input:-webkit-autofill:hover,
+.bg-gray-900 input:-webkit-autofill:focus,
+.bg-gray-900 input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--bg-input, #1a1f2c) inset !important;
+  -webkit-text-fill-color: white !important;
+}
+
+/* Dark mode specific */
+.dark input:invalid,
+.dark input:-moz-ui-invalid,
+.dark input:-webkit-autofill:invalid {
+  background-color: var(--bg-input, #1a1f2c) !important;
+}
+
+/* Light mode specific */
+.light input:invalid,
+.light input:-moz-ui-invalid,
+.light input:-webkit-autofill:invalid {
+  background-color: white !important;
+}
+
+/* For autofill in light mode */
+.light input:-webkit-autofill,
+.light input:-webkit-autofill:hover,
+.light input:-webkit-autofill:focus,
+.light input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #1e293b !important;
+}
