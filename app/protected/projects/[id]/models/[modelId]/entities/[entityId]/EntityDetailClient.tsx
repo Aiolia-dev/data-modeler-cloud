@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import EntityDetail from "@/components/entity/entity-detail";
+import DataModelTabs from "@/components/data-model/DataModelTabs";
 
 interface Entity {
   id: string;
@@ -79,6 +79,9 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
       router.push(`/protected/projects/${projectId}/models/${modelId}?tab=${value}`);
     }
   };
+  
+  // Set the active tab for the shared tab component
+  const [activeTab, setActiveTab] = useState("entities");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -223,49 +226,16 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
         <h1 className="text-2xl font-bold">{entity.name}</h1>
       </div>
       
-      {/* Tabs for navigation - custom implementation that matches the visual style */}
+      {/* Shared Tab Navigation */}
       <div className="w-full">
-        <div className="grid grid-cols-5 mb-8 bg-gray-800 rounded-md">
-          <button className="py-2 px-4 text-sm font-medium bg-gray-700 text-white rounded-sm flex items-center gap-1.5">
-            Entities {entityCount > 0 && (
-              <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
-                {entityCount}
-              </span>
-            )}
-          </button>
-          <button 
-            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm flex items-center gap-1.5"
-            onClick={() => handleTabChange('referentials')}
-          >
-            Referentials {referentialCount > 0 && (
-              <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
-                {referentialCount}
-              </span>
-            )}
-          </button>
-          <button 
-            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm"
-            onClick={() => handleTabChange('diagram')}
-          >
-            Diagram
-          </button>
-          <button 
-            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm flex items-center gap-1.5"
-            onClick={() => handleTabChange('rules')}
-          >
-            Rules {ruleCount > 0 && (
-              <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
-                {ruleCount}
-              </span>
-            )}
-          </button>
-          <button 
-            className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm"
-            onClick={() => handleTabChange('sql')}
-          >
-            SQL
-          </button>
-        </div>
+        <DataModelTabs 
+          projectId={projectId}
+          modelId={modelId}
+          entityCount={entityCount}
+          referentialCount={referentialCount}
+          ruleCount={ruleCount}
+          activeTab={activeTab}
+        />
         
         <div className="mt-0 w-full">
           <EntityDetail

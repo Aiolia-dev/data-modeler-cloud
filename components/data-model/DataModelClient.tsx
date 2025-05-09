@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -12,6 +12,7 @@ import { RulesListView } from "@/components/rules/rules-list-view";
 import { ReferentialList } from "@/components/referential/referential-list";
 import { EntityModal, EntityFormData } from "@/components/entity/entity-modal";
 import { usePermissions } from "@/context/permission-context";
+import DataModelTabs from "./DataModelTabs";
 
 interface DataModelClientProps {
   projectId: string;
@@ -24,10 +25,22 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || "entities");
   
+  // Listen for tab change events from the shared tab component
+  useEffect(() => {
+    const handleTabChangeEvent = (event: CustomEvent) => {
+      setActiveTab(event.detail.tab);
+    };
+    
+    window.addEventListener('tab-change', handleTabChangeEvent as EventListener);
+    
+    return () => {
+      window.removeEventListener('tab-change', handleTabChangeEvent as EventListener);
+    };
+  }, []);
+  
   // Get permission context to check if user can create entities
   const { 
     hasPermission, 
-    refreshPermissions, 
     forceRefreshPermissions, 
     projectPermissions, 
     currentProjectRole, 
@@ -103,53 +116,51 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   const [entities, setEntities] = useState<any[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(true);
   const [attributeCounts, setAttributeCounts] = useState<Record<string, number>>({});
+  const [attributeCountsLoading, setAttributeCountsLoading] = useState(true);
+  const [foreignKeyCounts, setForeignKeyCounts] = useState<Record<string, number>>({});
+  const [foreignKeyCountsLoading, setForeignKeyCountsLoading] = useState(true);
+  const [relationshipCounts, setRelationshipCounts] = useState<Record<string, number>>({});
+  const [relationshipCountsLoading, setRelationshipCountsLoading] = useState(true);
+  const [ruleCounts, setRuleCounts] = useState<Record<string, number>>({});
+  const [ruleCountsLoading, setRuleCountsLoading] = useState(true);
+  
+  // Data model state
+  const [dataModel, setDataModel] = useState<any>(null);
+  const [dataModelLoading, setDataModelLoading] = useState(true);
+  
+  // Entity modal state
+  const [showEntityModal, setShowEntityModal] = useState(false);
   
   // Tab count state
   const [entityCount, setEntityCount] = useState(0);
   const [referentialCount, setReferentialCount] = useState(0);
   const [ruleCount, setRuleCount] = useState(0);
-  const [foreignKeyCounts, setForeignKeyCounts] = useState<Record<string, number>>({});
-  const [relationshipCounts, setRelationshipCounts] = useState<Record<string, number>>({});
-  const [ruleCounts, setRuleCounts] = useState<Record<string, number>>({});
-  const [attributeCountsLoading, setAttributeCountsLoading] = useState<Record<string, boolean>>({});
-  const [foreignKeyCountsLoading, setForeignKeyCountsLoading] = useState<Record<string, boolean>>({});
-  const [relationshipCountsLoading, setRelationshipCountsLoading] = useState<Record<string, boolean>>({});
-  const [ruleCountsLoading, setRuleCountsLoading] = useState<Record<string, boolean>>({});
-  const [dataModel, setDataModel] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
-  // Entity modal state
-  const [showEntityModal, setShowEntityModal] = useState(false);
+  // Available referentials for entity creation
   const [availableReferentials, setAvailableReferentials] = useState<any[]>([]);
-
+  
+  // Fetch the data model details
   useEffect(() => {
-    // Fetch the data model details
     const fetchDataModel = async () => {
+      setDataModelLoading(true);
       try {
-        setLoading(true);
         const response = await fetch(`/api/projects/${projectId}/models/${modelId}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data model: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDataModel(data);
+        } else {
+          console.error('Failed to fetch data model:', await response.text());
         }
-        
-        const data = await response.json();
-        setDataModel(data.dataModel);
-        setError(null);
-      } catch (err: any) {
-        console.error("Error fetching data model:", err);
-        setError(err.message || "Failed to load data model");
+      } catch (error) {
+        console.error('Error fetching data model:', error);
       } finally {
-        setLoading(false);
+        setDataModelLoading(false);
       }
     };
-
-    if (projectId && modelId) {
-      fetchDataModel();
-    }
+    
+    fetchDataModel();
   }, [projectId, modelId]);
-
+  
   // Handle tab change
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -160,112 +171,109 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
     window.history.pushState({}, "", url.toString());
   };
   
+  // Update active tab when URL parameter changes
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+  
   // Fetch entities for the data model
   useEffect(() => {
     const fetchEntities = async () => {
-      if (!modelId) return;
-      
+      setEntitiesLoading(true);
       try {
-        setEntitiesLoading(true);
         const response = await fetch(`/api/projects/${projectId}/models/${modelId}/entities`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch entities: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const entitiesData = data.entities || [];
-        setEntities(entitiesData);
-        setEntityCount(entitiesData.length);
-        
-        // Initialize counts
-        const entityIds = entitiesData.map((e: any) => e.id);
-        
-        // Initialize loading states
-        const loadingState: Record<string, boolean> = {};
-        entityIds.forEach((id: string) => {
-          loadingState[id] = true;
-        });
-        
-        setAttributeCountsLoading(loadingState);
-        setForeignKeyCountsLoading({...loadingState});
-        setRelationshipCountsLoading({...loadingState});
-        setRuleCountsLoading({...loadingState});
-        
-        // Fetch all attributes, relationships, and rules in one go
-        const [attributesRes, relationshipsRes, rulesRes] = await Promise.all([
-          fetch(`/api/projects/${projectId}/models/${modelId}/attributes`),
-          fetch(`/api/relationships?dataModelId=${modelId}`),
-          fetch(`/api/rules?dataModelId=${modelId}`)
-        ]);
-        
-        // Process attributes
-        const attributeCountsObj: Record<string, number> = {};
-        const foreignKeyCountsObj: Record<string, number> = {};
-        if (attributesRes.ok) {
-          const attributesData = await attributesRes.json();
-          const allAttributes = attributesData.attributes || [];
+        if (response.ok) {
+          const data = await response.json();
+          setEntities(data.entities || []);
+          setEntityCount(data.entities?.length || 0);
           
-          // Count attributes and foreign keys for each entity
-          entityIds.forEach((entityId: string) => {
-            const entityAttributes = allAttributes.filter((attr: any) => attr.entity_id === entityId);
-            attributeCountsObj[entityId] = entityAttributes.length;
-            
-            const entityForeignKeys = entityAttributes.filter((attr: any) => attr.is_foreign_key);
-            foreignKeyCountsObj[entityId] = entityForeignKeys.length;
+          // Fetch attribute counts for each entity
+          setAttributeCountsLoading(true);
+          const attrCountsPromises = (data.entities || []).map(async (entity: any) => {
+            try {
+              const attrResponse = await fetch(`/api/attributes?entityId=${entity.id}`);
+              if (attrResponse.ok) {
+                const attrData = await attrResponse.json();
+                return { entityId: entity.id, count: attrData.attributes?.length || 0 };
+              }
+              return { entityId: entity.id, count: 0 };
+            } catch (error) {
+              console.error(`Error fetching attributes for entity ${entity.id}:`, error);
+              return { entityId: entity.id, count: 0 };
+            }
           });
-        }
-        
-        // Process relationships
-        const relationshipCountsObj: Record<string, number> = {};
-        if (relationshipsRes.ok) {
-          const relationshipsData = await relationshipsRes.json();
-          const allRelationships = relationshipsData.relationships || [];
           
-          // Count relationships for each entity
-          entityIds.forEach((entityId: string) => {
-            const entityRelationships = allRelationships.filter(
-              (rel: any) => rel.sourceEntityId === entityId || rel.targetEntityId === entityId
-            );
-            relationshipCountsObj[entityId] = entityRelationships.length;
+          const attrCountsResults = await Promise.all(attrCountsPromises);
+          const newAttrCounts: Record<string, number> = {};
+          attrCountsResults.forEach(result => {
+            newAttrCounts[result.entityId] = result.count;
           });
-        }
-        
-        // Process rules
-        const ruleCountsObj: Record<string, number> = {};
-        if (rulesRes.ok) {
-          const rulesData = await rulesRes.json();
-          const allRules = rulesData || [];
+          setAttributeCounts(newAttrCounts);
+          setAttributeCountsLoading(false);
           
-          // Set the total rule count for the tab
-          setRuleCount(allRules.length);
-          
-          // Count rules for each entity
-          entityIds.forEach((entityId: string) => {
-            const entityRules = allRules.filter((rule: any) => rule.entity_id === entityId);
-            ruleCountsObj[entityId] = entityRules.length;
+          // Fetch foreign key counts for each entity
+          setForeignKeyCountsLoading(true);
+          const fkCountsPromises = (data.entities || []).map(async (entity: any) => {
+            try {
+              const fkResponse = await fetch(`/api/attributes?entityId=${entity.id}&isForeignKey=true`);
+              if (fkResponse.ok) {
+                const fkData = await fkResponse.json();
+                return { entityId: entity.id, count: fkData.attributes?.length || 0 };
+              }
+              return { entityId: entity.id, count: 0 };
+            } catch (error) {
+              console.error(`Error fetching foreign keys for entity ${entity.id}:`, error);
+              return { entityId: entity.id, count: 0 };
+            }
           });
+          
+          const fkCountsResults = await Promise.all(fkCountsPromises);
+          const newFkCounts: Record<string, number> = {};
+          fkCountsResults.forEach(result => {
+            newFkCounts[result.entityId] = result.count;
+          });
+          setForeignKeyCounts(newFkCounts);
+          setForeignKeyCountsLoading(false);
+          
+          // Set relationship counts (placeholder for now)
+          setRelationshipCountsLoading(true);
+          const newRelationshipCounts: Record<string, number> = {};
+          (data.entities || []).forEach((entity: any) => {
+            newRelationshipCounts[entity.id] = 0; // Placeholder
+          });
+          setRelationshipCounts(newRelationshipCounts);
+          setRelationshipCountsLoading(false);
+          
+          // Fetch rule counts for each entity
+          setRuleCountsLoading(true);
+          const ruleCountsPromises = (data.entities || []).map(async (entity: any) => {
+            try {
+              const rulesResponse = await fetch(`/api/rules?entityId=${entity.id}`);
+              if (rulesResponse.ok) {
+                const rulesData = await rulesResponse.json();
+                return { entityId: entity.id, count: rulesData?.length || 0 };
+              }
+              return { entityId: entity.id, count: 0 };
+            } catch (error) {
+              console.error(`Error fetching rules for entity ${entity.id}:`, error);
+              return { entityId: entity.id, count: 0 };
+            }
+          });
+          
+          const ruleCountsResults = await Promise.all(ruleCountsPromises);
+          const newRuleCounts: Record<string, number> = {};
+          ruleCountsResults.forEach(result => {
+            newRuleCounts[result.entityId] = result.count;
+          });
+          setRuleCounts(newRuleCounts);
+          setRuleCountsLoading(false);
+        } else {
+          console.error('Failed to fetch entities:', await response.text());
         }
-        
-        // Update all counts at once
-        setAttributeCounts(attributeCountsObj);
-        setForeignKeyCounts(foreignKeyCountsObj);
-        setRelationshipCounts(relationshipCountsObj);
-        setRuleCounts(ruleCountsObj);
-        
-        // Set all loading states to false
-        const notLoadingState: Record<string, boolean> = {};
-        entityIds.forEach((id: string) => {
-          notLoadingState[id] = false;
-        });
-        
-        setAttributeCountsLoading(notLoadingState);
-        setForeignKeyCountsLoading({...notLoadingState});
-        setRelationshipCountsLoading({...notLoadingState});
-        setRuleCountsLoading({...notLoadingState});
-        
-      } catch (err: any) {
-        console.error("Error fetching entities:", err);
+      } catch (error) {
+        console.error('Error fetching entities:', error);
       } finally {
         setEntitiesLoading(false);
       }
@@ -276,148 +284,120 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   
   // Handle entity selection
   const handleSelectEntity = (entityId: string) => {
-    // Navigate to the entity detail page using window.location for a full page navigation
-    // This ensures we load the entity detail page correctly
-    const url = `/protected/projects/${projectId}/models/${modelId}/entities/${entityId}`;
-    console.log('Navigating to entity detail page:', url);
-    window.location.href = url;
+    // Navigate to the entity detail page
+    router.push(`/protected/projects/${projectId}/models/${modelId}/entities/${entityId}`);
   };
   
-  // Fetch referentials for the entity modal
+  // Fetch referentials for entity creation
   useEffect(() => {
     const fetchReferentials = async () => {
       try {
         const response = await fetch(`/api/referentials?dataModelId=${modelId}`);
         if (response.ok) {
           const data = await response.json();
-          const referentialsData = data.referentials || [];
-          setAvailableReferentials(referentialsData);
-          setReferentialCount(referentialsData.length);
+          setAvailableReferentials(data.referentials || []);
+          setReferentialCount(data.referentials?.length || 0);
+        } else {
+          console.error('Failed to fetch referentials:', await response.text());
         }
-      } catch (err) {
-        console.error('Error fetching referentials:', err);
+      } catch (error) {
+        console.error('Error fetching referentials:', error);
       }
     };
     
-    if (modelId) {
-      fetchReferentials();
-    }
+    fetchReferentials();
+  }, [modelId]);
+  
+  // Fetch rules count
+  useEffect(() => {
+    const fetchRulesCount = async () => {
+      try {
+        const response = await fetch(`/api/rules?dataModelId=${modelId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setRuleCount(data?.length || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching rules count:', error);
+      }
+    };
+    
+    fetchRulesCount();
   }, [modelId]);
   
   // Handle entity creation
   const handleCreateEntity = async (entityData: EntityFormData) => {
     try {
-      const response = await fetch(`/api/entities`, {
+      const response = await fetch('/api/entities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...entityData,
-          data_model_id: modelId
+          dataModelId: modelId,
         }),
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to create entity');
+      if (response.ok) {
+        // Refresh the entities list
+        const entitiesResponse = await fetch(`/api/projects/${projectId}/models/${modelId}/entities`);
+        if (entitiesResponse.ok) {
+          const data = await entitiesResponse.json();
+          setEntities(data.entities || []);
+          setEntityCount(data.entities?.length || 0);
+        }
+        
+        // Close the modal
+        setShowEntityModal(false);
+      } else {
+        console.error('Failed to create entity:', await response.text());
       }
-      
-      // Refresh the entities list
-      const entitiesResponse = await fetch(`/api/projects/${projectId}/models/${modelId}/entities`);
-      if (entitiesResponse.ok) {
-        const data = await entitiesResponse.json();
-        setEntities(data.entities || []);
-      }
-      
-      // Close the modal
-      setShowEntityModal(false);
-    } catch (err) {
-      console.error('Error creating entity:', err);
+    } catch (error) {
+      console.error('Error creating entity:', error);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-pulse text-gray-400">Loading data model...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="bg-red-900/20 p-6 rounded-lg border border-red-700 max-w-md">
-          <h2 className="text-xl font-semibold text-red-400 mb-2">Error Loading Data Model</h2>
-          <p className="text-gray-300 mb-4">{error}</p>
-          <div className="flex gap-3">
-            <Button 
-              onClick={() => router.refresh()}
-              className="bg-gray-700 hover:bg-gray-600"
-            >
-              Try Again
-            </Button>
+  return (
+    <div className="container mx-auto">
+      <div className="w-full mx-auto px-4 py-8">
+        {/* Header with back button and data model name */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
             <Link href={`/protected/projects/${projectId}`}>
-              <Button variant="outline">
-                Back to Project
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <ArrowLeft size={16} />
               </Button>
             </Link>
+            <h1 className="text-2xl font-bold">{dataModel?.name || 'Loading...'}</h1>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="w-full mx-auto px-4 py-8">
-        {/* Back button and header */}
-        <div className="mb-6">
-          <Link href={`/protected/projects/${projectId}`} className="inline-flex items-center text-gray-400 hover:text-white mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Project
-          </Link>
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">{dataModel?.name || "Data Model"}</h1>
-            <div className="text-sm text-gray-400">
-              Version {dataModel?.version || "1.0"} • Updated {dataModel?.updated_at ? new Date(dataModel.updated_at).toLocaleString() : "recently"}
-            </div>
-          </div>
-          {dataModel?.description && (
-            <p className="text-gray-400 mt-2">{dataModel.description}</p>
+          
+          {/* Debug button - only visible in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <Button variant="outline" size="sm" onClick={debugPermissions} className="text-xs">
+              Debug Permissions
+            </Button>
           )}
         </div>
 
-        {/* Tabs */}
+        {/* Shared Tab Navigation */}
+        <DataModelTabs 
+          projectId={projectId}
+          modelId={modelId}
+          entityCount={entityCount}
+          referentialCount={referentialCount}
+          ruleCount={ruleCount}
+          activeTab={activeTab}
+        />
+        
+        {/* Hidden Tabs Component - Only used for content switching */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid grid-cols-5 mb-8 bg-gray-800">
-            <TabsTrigger value="entities" className="data-[state=active]:bg-gray-700 flex items-center gap-1.5">
-              Entities {entityCount > 0 && (
-                <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
-                  {entityCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="referentials" className="data-[state=active]:bg-gray-700 flex items-center gap-1.5">
-              Referentials {referentialCount > 0 && (
-                <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
-                  {referentialCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="diagram" className="data-[state=active]:bg-gray-700">
-              Diagram
-            </TabsTrigger>
-            <TabsTrigger value="rules" className="data-[state=active]:bg-gray-700 flex items-center gap-1.5">
-              Rules {ruleCount > 0 && (
-                <span className="inline-flex items-center justify-center bg-white rounded-full w-5 h-5 text-xs font-medium text-gray-700">
-                  {ruleCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="sql" className="data-[state=active]:bg-gray-700">
-              SQL
-            </TabsTrigger>
+          <TabsList className="hidden">
+            <TabsTrigger value="entities">Entities</TabsTrigger>
+            <TabsTrigger value="referentials">Referentials</TabsTrigger>
+            <TabsTrigger value="diagram">Diagram</TabsTrigger>
+            <TabsTrigger value="rules">Rules</TabsTrigger>
+            <TabsTrigger value="sql">SQL</TabsTrigger>
           </TabsList>
 
           <TabsContent value="entities" className="mt-0">
@@ -438,7 +418,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
               </div>
               
               {entitiesLoading ? (
-                <div className="text-center py-8">
+                <div className="flex justify-center items-center py-12">
                   <div className="animate-pulse text-gray-400">Loading entities...</div>
                 </div>
               ) : entities.length === 0 ? (
@@ -448,6 +428,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
                     variant="outline" 
                     className="border-gray-600"
                     onClick={() => setShowEntityModal(true)}
+                    disabled={!canCreateEntities}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create your first entity
