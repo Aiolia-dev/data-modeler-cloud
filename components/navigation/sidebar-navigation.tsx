@@ -84,6 +84,81 @@ function NewDataModelButton({ projectId, onClick }: { projectId: string, onClick
   }
 }
 
+// Component for project context menu items with permission checks
+interface ProjectMenuItemsProps {
+  project: Project;
+  onRename: () => void;
+  onDelete: () => void;
+}
+
+function ProjectMenuItems({ project, onRename, onDelete }: ProjectMenuItemsProps) {
+  const { hasPermission } = usePermissions();
+  const canEdit = hasPermission('edit', project.id);
+  const canDelete = hasPermission('delete', project.id);
+  
+  return (
+    <>
+      {canEdit ? (
+        <DropdownMenuItem 
+          className="flex items-center gap-2 cursor-pointer hover:bg-gray-700"
+          onClick={onRename}
+        >
+          <Edit size={14} />
+          <span>Rename</span>
+        </DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem 
+          className="flex items-center gap-2 opacity-50 cursor-not-allowed"
+          disabled
+        >
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2">
+                  <Edit size={14} />
+                  <span>Rename</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>You don't have permission to rename this project</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </DropdownMenuItem>
+      )}
+      
+      {canDelete ? (
+        <DropdownMenuItem 
+          className="flex items-center gap-2 cursor-pointer hover:bg-gray-700 text-rose-400"
+          onClick={onDelete}
+        >
+          <Trash2 size={14} className="text-rose-400" />
+          <span>Delete</span>
+        </DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem 
+          className="flex items-center gap-2 opacity-50 cursor-not-allowed text-rose-400"
+          disabled
+        >
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2">
+                  <Trash2 size={14} className="text-rose-400" />
+                  <span>Delete</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>You don't have permission to delete this project</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </DropdownMenuItem>
+      )}
+    </>
+  );
+}
+
 export default function SidebarNavigation({ collapsed }: SidebarNavigationProps) {
   const params = useParams();
   const pathname = usePathname();
@@ -353,26 +428,16 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-40 bg-gray-800 border-gray-700 text-gray-200">
-                          <DropdownMenuItem 
-                            className="flex items-center gap-2 cursor-pointer hover:bg-gray-700"
-                            onClick={() => {
+                          <ProjectMenuItems project={project} 
+                            onRename={() => {
                               setProjectToRename(project);
                               setRenameProjectModalOpen(true);
                             }}
-                          >
-                            <Edit size={14} />
-                            <span>Rename</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="flex items-center gap-2 cursor-pointer hover:bg-gray-700 text-rose-400"
-                            onClick={() => {
+                            onDelete={() => {
                               setProjectToDelete(project);
                               setDeleteProjectModalOpen(true);
                             }}
-                          >
-                            <Trash2 size={14} className="text-rose-400" />
-                            <span>Delete</span>
-                          </DropdownMenuItem>
+                          />
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
