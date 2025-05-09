@@ -48,7 +48,23 @@ export default function RootLayout({
               <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                 <div className="w-full px-5 flex justify-between items-center p-3 text-sm">
                   <div className="flex gap-5 items-center font-semibold">
-                    <Link href={"/"}></Link>
+                    <Link href={"/"} className="flex items-center gap-3">
+                      <div 
+                        className="h-10 w-10 bg-white flex items-center justify-center" 
+                        style={{ 
+                          borderRadius: '6px',
+                          borderWidth: '3px',
+                          borderStyle: 'solid',
+                          borderLeftColor: '#7351F1',
+                          borderBottomColor: '#7351F1',
+                          borderRightColor: '#563CB5', /* 25% darker than #7351F1 */
+                          borderTopColor: '#563CB5', /* 25% darker than #7351F1 */
+                        }}
+                      >
+                        <span className="text-2xl font-bold" style={{ color: '#7351F1' }}>D</span>
+                      </div>
+                      <h1 className="text-2xl font-bold">Data Modeler Pro</h1>
+                    </Link>
                     {/* DeployButton removed */}
                   </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
