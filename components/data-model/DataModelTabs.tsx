@@ -49,9 +49,9 @@ export default function DataModelTabs({
   };
 
   return (
-    <div className="grid grid-cols-5 mb-8 bg-gray-800 rounded-md">
+    <div className="grid grid-cols-5 gap-[10px] mb-8 bg-gray-800 rounded-md py-[5px] px-[5px]">
       <button 
-        className={`py-2 px-4 text-sm font-medium ${activeTab === "entities" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center gap-1.5`}
+        className={`py-2 px-4 text-sm font-medium ${activeTab === "entities" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center justify-center gap-1.5`}
         onClick={() => handleTabChange('entities')}
       >
         Entities {entityCount > 0 && (
@@ -61,7 +61,7 @@ export default function DataModelTabs({
         )}
       </button>
       <button 
-        className={`py-2 px-4 text-sm font-medium ${activeTab === "referentials" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center gap-1.5`}
+        className={`py-2 px-4 text-sm font-medium ${activeTab === "referentials" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center justify-center gap-1.5`}
         onClick={() => handleTabChange('referentials')}
       >
         Referentials {referentialCount > 0 && (
@@ -71,13 +71,13 @@ export default function DataModelTabs({
         )}
       </button>
       <button 
-        className={`py-2 px-4 text-sm font-medium ${activeTab === "diagram" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm`}
+        className={`py-2 px-4 text-sm font-medium ${activeTab === "diagram" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center justify-center`}
         onClick={() => handleTabChange('diagram')}
       >
         Diagram
       </button>
       <button 
-        className={`py-2 px-4 text-sm font-medium ${activeTab === "rules" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center gap-1.5`}
+        className={`py-2 px-4 text-sm font-medium ${activeTab === "rules" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center justify-center gap-1.5`}
         onClick={() => handleTabChange('rules')}
       >
         Rules {ruleCount > 0 && (
@@ -87,7 +87,7 @@ export default function DataModelTabs({
         )}
       </button>
       <button 
-        className={`py-2 px-4 text-sm font-medium ${activeTab === "sql" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm`}
+        className={`py-2 px-4 text-sm font-medium ${activeTab === "sql" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"} rounded-sm flex items-center justify-center`}
         onClick={() => handleTabChange('sql')}
       >
         SQL

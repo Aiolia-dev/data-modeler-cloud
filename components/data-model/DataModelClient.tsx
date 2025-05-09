@@ -359,10 +359,10 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   };
 
   return (
-    <div className="container mx-auto">
-      <div className="w-full mx-auto px-4 py-8">
+    <div className="w-full">
+      <div className="w-full mx-auto py-8">
         {/* Header with back button and data model name */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center mb-6">
           <div className="flex items-center gap-2">
             <Link href={`/protected/projects/${projectId}`}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -371,13 +371,6 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
             </Link>
             <h1 className="text-2xl font-bold">{dataModel?.name || 'Loading...'}</h1>
           </div>
-          
-          {/* Debug button - only visible in development */}
-          {process.env.NODE_ENV === 'development' && (
-            <Button variant="outline" size="sm" onClick={debugPermissions} className="text-xs">
-              Debug Permissions
-            </Button>
-          )}
         </div>
 
         {/* Shared Tab Navigation */}
@@ -401,7 +394,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
           </TabsList>
 
           <TabsContent value="entities" className="mt-0">
-            <div className="bg-gray-800 rounded-lg py-6 px-0 border border-gray-700">
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Entities</h2>
                 <div className="flex gap-2">
@@ -476,7 +469,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
           </TabsContent>
 
           <TabsContent value="diagram" className="mt-0">
-            <div className="bg-gray-800 rounded-lg p-0 border border-gray-700 h-[calc(100vh-200px)]">
+            <div className="bg-gray-800 rounded-lg p-0 border border-gray-700 h-full min-h-[calc(100vh-200px)]">
               <DiagramView 
                 dataModelId={modelId} 
                 projectId={projectId} 

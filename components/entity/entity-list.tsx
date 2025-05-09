@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRightIcon, EyeIcon, ChevronUpIcon, ChevronDownIcon, ArrowUpDownIcon } from "lucide-react";
+import { ChevronRightIcon, EyeIcon, ChevronUpIcon, ChevronDownIcon, ArrowUpDownIcon, ChevronLeftIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter, useParams } from "next/navigation";
 import RuleTooltip from "./rule-tooltip";
+import { Button } from "@/components/ui/button";
 
 interface Entity {
   id: string;
@@ -47,6 +48,10 @@ export default function EntityList({
   // State for sorting
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  
   // Function to toggle sort direction
   const toggleSort = () => {
     if (sortDirection === null) {
@@ -65,6 +70,19 @@ export default function EntityList({
   } else if (sortDirection === 'desc') {
     sortedEntities.sort((a, b) => b.name.localeCompare(a.name));
   }
+  
+  // Calculate pagination values
+  const totalPages = Math.ceil(sortedEntities.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, sortedEntities.length);
+  const currentEntities = sortedEntities.slice(startIndex, endIndex);
+  
+  // Handle page changes
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
   const router = useRouter();
   const params = useParams();
   const projectId = params.id as string;
@@ -112,7 +130,7 @@ export default function EntityList({
           </tr>
         </thead>
         <tbody>
-          {sortedEntities.map((entity) => (
+          {currentEntities.map((entity) => (
             <tr 
               key={entity.id} 
               className="border-t border-gray-700 hover:bg-gray-800/30 cursor-pointer"
@@ -196,6 +214,93 @@ export default function EntityList({
           ))}
         </tbody>
       </table>
+      
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-t border-gray-700">
+          <div className="text-sm text-gray-400">
+            Showing <span className="font-medium text-gray-300">{startIndex + 1}</span> to <span className="font-medium text-gray-300">{endIndex}</span> of <span className="font-medium text-gray-300">{sortedEntities.length}</span> entities
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="h-8 px-2 border-gray-600"
+            >
+              <ChevronLeftIcon size={16} />
+            </Button>
+            
+            {/* Page numbers */}
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                // Show first page, last page, current page, and pages around current
+                let pageToShow: number | null = null;
+                
+                if (totalPages <= 5) {
+                  // If 5 or fewer pages, show all pages
+                  pageToShow = i + 1;
+                } else if (currentPage <= 3) {
+                  // If near start, show first 5 pages
+                  if (i < 4) {
+                    pageToShow = i + 1;
+                  } else {
+                    pageToShow = totalPages;
+                  }
+                } else if (currentPage >= totalPages - 2) {
+                  // If near end, show last 5 pages
+                  if (i === 0) {
+                    pageToShow = 1;
+                  } else {
+                    pageToShow = totalPages - 4 + i;
+                  }
+                } else {
+                  // Otherwise show current page and surrounding pages
+                  if (i === 0) {
+                    pageToShow = 1;
+                  } else if (i === 4) {
+                    pageToShow = totalPages;
+                  } else {
+                    pageToShow = currentPage - 1 + (i - 1);
+                  }
+                }
+                
+                // Add ellipsis indicators
+                if (pageToShow === null) {
+                  return (
+                    <span key={`ellipsis-${i}`} className="px-2 py-1 text-gray-400">
+                      ...
+                    </span>
+                  );
+                }
+                
+                return (
+                  <Button
+                    key={pageToShow}
+                    variant={currentPage === pageToShow ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(pageToShow as number)}
+                    className={`h-8 w-8 ${currentPage === pageToShow ? 'bg-blue-600 hover:bg-blue-700' : 'border-gray-600'}`}
+                  >
+                    {pageToShow}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="h-8 px-2 border-gray-600"
+            >
+              <ChevronRightIcon size={16} />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
