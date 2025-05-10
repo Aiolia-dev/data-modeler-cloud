@@ -70,6 +70,16 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
             console.error('Error refreshing auth state:', error);
           } else {
             console.log('Auth state refreshed successfully');
+            
+            // Ensure the 2FA status is also saved in local storage
+            // This is a fallback in case the Supabase metadata update fails
+            if (data?.user?.id) {
+              localStorage.setItem(`dm_two_factor_enabled_${data.user.id}`, 'true');
+              if (secret) {
+                localStorage.setItem(`dm_totp_secret_${data.user.id}`, secret);
+              }
+              console.log('2FA status saved to local storage');
+            }
           }
         } catch (refreshError) {
           console.error('Failed to refresh auth state:', refreshError);

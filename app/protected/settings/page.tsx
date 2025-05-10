@@ -7,12 +7,57 @@ import { TwoFactorSetup } from '@/components/auth/two-factor-setup';
 import { ShieldCheck, ShieldOff, User, Lock } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { user, isTwoFactorEnabled, disableTwoFactor } = useAuth();
+  const { user, isTwoFactorEnabled, disableTwoFactor, refreshSession } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('security');
   const [showSetup, setShowSetup] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  
+  // Effect to check 2FA status when the component mounts
+  React.useEffect(() => {
+    const check2FAStatus = async () => {
+      try {
+        // First check if 2FA is enabled in the auth context
+        if (isTwoFactorEnabled) {
+          setIs2FAEnabled(true);
+          return;
+        }
+        
+        // If not, check user metadata
+        if (user?.user_metadata?.two_factor_enabled) {
+          setIs2FAEnabled(true);
+          return;
+        }
+        
+        // Also check local storage as a fallback
+        const localEnabled = localStorage.getItem(`dm_two_factor_enabled_${user?.id}`);
+        if (localEnabled === 'true') {
+          setIs2FAEnabled(true);
+          return;
+        }
+        
+        // If we get here, 2FA is not enabled
+        setIs2FAEnabled(false);
+      } catch (err) {
+        console.error('Error checking 2FA status:', err);
+      }
+    };
+    
+    // Refresh the session first to get the latest user metadata
+    const refreshAndCheck = async () => {
+      try {
+        await refreshSession();
+        check2FAStatus();
+      } catch (err) {
+        console.error('Error refreshing session:', err);
+        check2FAStatus(); // Still check even if refresh fails
+      }
+    };
+    
+    refreshAndCheck();
+  }, [user, isTwoFactorEnabled, refreshSession]);
 
   const handleDisableTwoFactor = async () => {
     if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
@@ -25,6 +70,15 @@ export default function SettingsPage() {
       const result = await disableTwoFactor();
       
       if (result) {
+        // Update our local state to reflect that 2FA is now disabled
+        setIs2FAEnabled(false);
+        
+        // Also remove from localStorage
+        if (user?.id) {
+          localStorage.removeItem(`dm_two_factor_enabled_${user.id}`);
+          localStorage.removeItem(`dm_totp_secret_${user.id}`);
+        }
+        
         setSuccess('Two-factor authentication has been disabled');
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -99,22 +153,22 @@ export default function SettingsPage() {
             {!showSetup ? (
               <div>
                 <div className="flex items-start mb-4">
-                  <div className={`p-2 rounded-full mr-3 ${isTwoFactorEnabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
-                    {isTwoFactorEnabled ? <ShieldCheck size={20} /> : <ShieldOff size={20} />}
+                  <div className={`p-2 rounded-full mr-3 ${is2FAEnabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                    {is2FAEnabled ? <ShieldCheck size={20} /> : <ShieldOff size={20} />}
                   </div>
                   <div>
                     <h3 className="font-medium">
-                      {isTwoFactorEnabled ? 'Two-factor authentication is enabled' : 'Two-factor authentication is disabled'}
+                      {is2FAEnabled ? 'Two-factor authentication is enabled' : 'Two-factor authentication is disabled'}
                     </h3>
                     <p className="text-sm text-gray-400 mt-1">
-                      {isTwoFactorEnabled 
+                      {is2FAEnabled 
                         ? 'Your account is protected with an additional layer of security.' 
                         : 'Add an extra layer of security to your account by requiring a verification code.'}
                     </p>
                   </div>
                 </div>
                 
-                {isTwoFactorEnabled ? (
+                {is2FAEnabled ? (
                   <Button 
                     variant="destructive" 
                     onClick={handleDisableTwoFactor}
