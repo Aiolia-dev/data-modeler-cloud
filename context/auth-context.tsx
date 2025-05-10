@@ -426,10 +426,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log(`Validating 2FA token for user: ${user.id} with secret: ${secretToUse?.substring(0, 5)}...`);
       
       // Create a TOTP object with the user's secret and unique identifier
-      let totp;
+      console.log(`Attempting to validate token: ${token} for user: ${user.id} with secret: ${secretToUse?.substring(0, 5)}...`);
+      
+      // Try multiple validation approaches to ensure the code is properly validated
+      let verified = false;
+      
       try {
-        // Try creating the TOTP with the raw secret string
-        totp = new OTPAuth.TOTP({
+        // Approach 1: Try with raw secret string
+        console.log('Trying validation approach 1 with raw secret');
+        const totp1 = new OTPAuth.TOTP({
           issuer: 'DataModelerCloud',
           label: user.email || user.id || 'user', // Use email or ID for uniqueness
           algorithm: 'SHA1',
@@ -437,25 +442,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           period: 30,
           secret: secretToUse
         });
+        
+        // Use a larger window to account for time drift (2 periods before/after)
+        const delta1 = totp1.validate({ token, window: 2 });
+        console.log('Validation approach 1 result:', delta1 !== null ? 'Valid' : 'Invalid');
+        
+        if (delta1 !== null) {
+          verified = true;
+        } else {
+          // Approach 2: Try with Secret object from Base32
+          console.log('Trying validation approach 2 with Secret.fromBase32');
+          const secretObj = OTPAuth.Secret.fromBase32(secretToUse || '');
+          const totp2 = new OTPAuth.TOTP({
+            issuer: 'DataModelerCloud',
+            label: user.email || user.id || 'user', // Use email or ID for uniqueness
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: secretObj
+          });
+          
+          const delta2 = totp2.validate({ token, window: 2 });
+          console.log('Validation approach 2 result:', delta2 !== null ? 'Valid' : 'Invalid');
+          
+          if (delta2 !== null) {
+            verified = true;
+          } else {
+            // Approach 3: Try with different encoding
+            console.log('Trying validation approach 3 with different encoding');
+            try {
+              const secretObj3 = OTPAuth.Secret.fromUTF8(secretToUse || '');
+              const totp3 = new OTPAuth.TOTP({
+                issuer: 'DataModelerCloud',
+                label: user.email || user.id || 'user', // Use email or ID for uniqueness
+                algorithm: 'SHA1',
+                digits: 6,
+                period: 30,
+                secret: secretObj3
+              });
+              
+              const delta3 = totp3.validate({ token, window: 2 });
+              console.log('Validation approach 3 result:', delta3 !== null ? 'Valid' : 'Invalid');
+              verified = delta3 !== null;
+            } catch (e) {
+              console.error('Error in validation approach 3:', e);
+            }
+          }
+        }
       } catch (e) {
         console.error('Error creating TOTP with string secret:', e);
-        // If that fails, try creating a new Secret object
-        const secretObj = OTPAuth.Secret.fromBase32(secretToUse || '');
-        totp = new OTPAuth.TOTP({
-          issuer: 'DataModelerCloud',
-          label: user.email || user.id || 'user', // Use email or ID for uniqueness
-          algorithm: 'SHA1',
-          digits: 6,
-          period: 30,
-          secret: secretObj
-        });
       }
       
-      // Verify the token with a window of 1 period before/after
-      const delta = totp.validate({ token, window: 1 });
-      console.log('Token validation result:', delta !== null ? 'Valid' : 'Invalid');
+      console.log('Final token validation result:', verified ? 'Valid' : 'Invalid');
       
-      if (delta === null) {
+      if (!verified) {
         // Invalid token
         return false;
       }
