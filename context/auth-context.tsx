@@ -218,11 +218,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const appName = 'DataModelerCloud';
       const accountName = user.email || 'user';
       
-      // Create a new TOTP object with a random secret
+      // Create a new TOTP secret using a consistent format
+      // We'll use base32 encoding which is standard for TOTP
       const totpSecret = new OTPAuth.Secret();
       const secretBase32 = totpSecret.base32;
       
-      // Create the TOTP object
+      console.log('Generated new TOTP secret in base32 format:', secretBase32);
+      
+      // Create the TOTP object using the base32 secret
       const totp = new OTPAuth.TOTP({
         issuer: appName,
         label: accountName,
