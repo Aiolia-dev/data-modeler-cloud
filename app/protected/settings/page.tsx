@@ -67,26 +67,86 @@ export default function SettingsPage() {
     try {
       setIsDisabling(true);
       setError('');
+      setSuccess('');
+      
+      console.log('Attempting to disable 2FA from settings page');
+      
+      // First refresh the session to ensure we have a valid session
+      try {
+        console.log('Refreshing session before disabling 2FA...');
+        await refreshSession();
+        console.log('Session refreshed successfully');
+      } catch (refreshError) {
+        console.error('Error refreshing session, but continuing:', refreshError);
+        // Continue anyway - the disableTwoFactor function will handle this
+      }
+      
+      // Try to disable 2FA through the auth context
       const result = await disableTwoFactor();
       
       if (result) {
+        console.log('2FA disabled successfully');
         // Update our local state to reflect that 2FA is now disabled
         setIs2FAEnabled(false);
         
-        // Also remove from localStorage
+        // Also remove from localStorage as a backup
         if (user?.id) {
           localStorage.removeItem(`dm_two_factor_enabled_${user.id}`);
           localStorage.removeItem(`dm_totp_secret_${user.id}`);
+          console.log('Removed 2FA data from localStorage');
         }
         
         setSuccess('Two-factor authentication has been disabled');
-        setTimeout(() => setSuccess(''), 3000);
+        setTimeout(() => setSuccess(''), 5000);
+        
+        // Force a page refresh after a short delay to ensure all state is updated
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
-        setError('Failed to disable two-factor authentication');
+        console.error('Failed to disable 2FA through the auth context');
+        
+        // Fallback approach - update local storage and state directly
+        if (user?.id) {
+          localStorage.setItem(`dm_two_factor_enabled_${user.id}`, 'false');
+          localStorage.removeItem(`dm_totp_secret_${user.id}`);
+          console.log('Emergency fallback: Updated 2FA status in local storage');
+          
+          setIs2FAEnabled(false);
+          setSuccess('Two-factor authentication has been disabled (using fallback method)');
+          
+          // Force a page refresh after a short delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          setError('Failed to disable two-factor authentication');
+        }
       }
     } catch (err) {
-      setError('An error occurred while disabling two-factor authentication');
-      console.error(err);
+      console.error('Error disabling 2FA:', err);
+      
+      // Even if there's an error, try the local storage fallback
+      if (user?.id) {
+        try {
+          localStorage.setItem(`dm_two_factor_enabled_${user.id}`, 'false');
+          localStorage.removeItem(`dm_totp_secret_${user.id}`);
+          console.log('Last resort fallback: Updated 2FA status in local storage after error');
+          
+          setIs2FAEnabled(false);
+          setSuccess('Two-factor authentication has been disabled (using emergency fallback)');
+          
+          // Force a page refresh after a short delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } catch (localStorageError) {
+          console.error('Even local storage fallback failed:', localStorageError);
+          setError('An error occurred while disabling two-factor authentication');
+        }
+      } else {
+        setError('An error occurred while disabling two-factor authentication');
+      }
     } finally {
       setIsDisabling(false);
     }

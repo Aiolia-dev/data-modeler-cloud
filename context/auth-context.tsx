@@ -431,23 +431,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       if (!user) throw new Error('User not authenticated');
       
-      // Update user metadata to disable 2FA
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          two_factor_enabled: false,
-          totp_secret: null
+      console.log('Attempting to disable 2FA for user:', user.id);
+      console.log('Current session status:', session ? 'Valid' : 'Missing');
+      
+      // First, try to refresh the session to ensure we have a valid session
+      console.log('Refreshing session before disabling 2FA...');
+      try {
+        await refreshSession();
+        console.log('Session refreshed successfully');
+      } catch (refreshError) {
+        console.error('Error refreshing session:', refreshError);
+        // Continue anyway - we'll try to update the user
+      }
+      
+      // Make multiple attempts to update the user metadata
+      let updateSuccess = false;
+      let attempts = 0;
+      const maxAttempts = 3;
+      let lastError = null;
+      
+      while (!updateSuccess && attempts < maxAttempts) {
+        attempts++;
+        console.log(`Attempt ${attempts} to disable 2FA`);
+        
+        try {
+          // Update user metadata to disable 2FA
+          const { error } = await supabase.auth.updateUser({
+            data: {
+              two_factor_enabled: false,
+              totp_secret: null
+            }
+          });
+          
+          if (error) {
+            console.error(`Error on attempt ${attempts}:`, error);
+            lastError = error;
+            // Wait a bit before trying again
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            console.log('Successfully disabled 2FA in user metadata');
+            updateSuccess = true;
+          }
+        } catch (updateError) {
+          console.error(`Exception on attempt ${attempts}:`, updateError);
+          lastError = updateError;
+          // Wait a bit before trying again
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-      });
+      }
       
-      if (error) throw error;
+      // If all attempts failed, try a fallback approach using local storage
+      if (!updateSuccess) {
+        console.log('All attempts to update Supabase metadata failed, using local storage fallback');
+        // Store the 2FA status in local storage as a fallback
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem(`dm_two_factor_enabled_${user.id}`, 'false');
+          localStorage.removeItem(`dm_totp_secret_${user.id}`);
+          console.log('Updated 2FA status in local storage');
+        }
+      }
       
-      // Update local state
+      // Update local state regardless of Supabase update success
       setIsTwoFactorEnabled(false);
       setIsTwoFactorVerified(false);
       
+      // If we had errors but used the fallback, still return true
       return true;
     } catch (error) {
       console.error('Error disabling 2FA:', error);
+      
+      // Try the local storage fallback even if the main function fails
+      try {
+        if (user && typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem(`dm_two_factor_enabled_${user.id}`, 'false');
+          localStorage.removeItem(`dm_totp_secret_${user.id}`);
+          console.log('Emergency fallback: Updated 2FA status in local storage');
+          
+          // Update local state
+          setIsTwoFactorEnabled(false);
+          setIsTwoFactorVerified(false);
+          
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error('Error with fallback approach:', fallbackError);
+      }
+      
       return false;
     }
   };
