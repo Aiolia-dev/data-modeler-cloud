@@ -42,15 +42,48 @@ export const signUpAction = async (formData: FormData) => {
 export const signInAction = async (formData: FormData) => {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const skip2FA = formData.get("skip2FA") as string;
+  const twoFactorVerified = formData.get("twoFactorVerified") as string;
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  // If the client has already verified 2FA or indicated to skip the 2FA check,
+  // we can proceed with normal sign-in
+  if (skip2FA === 'true' || twoFactorVerified === 'true') {
+    // If 2FA was verified, we just need to ensure the session is properly established
+    // The user is already authenticated at this point
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (!sessionData.session) {
+      // If there's no session, we need to sign in again
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return encodedRedirect("error", "/sign-in", error.message);
+      }
+    }
+    
+    // If 2FA was verified or not needed, redirect to protected area
+    return redirect("/protected");
+  }
+
+  // Normal sign-in flow - this should only be hit if the client-side 2FA check was bypassed
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
     return encodedRedirect("error", "/sign-in", error.message);
+  }
+
+  // Check if 2FA is enabled for this user
+  if (data.user?.user_metadata?.two_factor_enabled === true) {
+    // We shouldn't normally reach here because the client should handle 2FA verification
+    // But just in case, redirect back to sign-in with a message
+    return encodedRedirect("error", "/sign-in", "Two-factor authentication required");
   }
 
   return redirect("/protected");

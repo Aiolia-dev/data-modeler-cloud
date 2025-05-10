@@ -9,13 +9,15 @@ import { ShieldCheck } from 'lucide-react';
 interface TwoFactorVerifyProps {
   onSuccess: () => void;
   onCancel: () => void;
+  secret?: string; // Optional secret for direct validation without using auth context
 }
 
-export function TwoFactorVerify({ onSuccess, onCancel }: TwoFactorVerifyProps) {
+export function TwoFactorVerify({ onSuccess, onCancel, secret }: TwoFactorVerifyProps) {
   const { validateTwoFactorToken } = useAuth();
   const [token, setToken] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
+  const [remainingAttempts, setRemainingAttempts] = useState(3); // Add attempt counter
 
   const handleVerify = async () => {
     if (!token) {
@@ -23,15 +25,59 @@ export function TwoFactorVerify({ onSuccess, onCancel }: TwoFactorVerifyProps) {
       return;
     }
 
+    if (token.length !== 6 || !/^\d+$/.test(token)) {
+      setError('Verification code must be 6 digits');
+      return;
+    }
+
     try {
       setIsVerifying(true);
       setError('');
-      const verified = await validateTwoFactorToken(token);
+      
+      // If a secret was provided directly (during sign-in), use it for validation
+      // Otherwise use the auth context method (for settings page verification)
+      let verified = false;
+      
+      if (secret) {
+        // For sign-in flow, create a TOTP object and validate directly
+        try {
+          const OTPAuth = await import('otpauth');
+          const totp = new OTPAuth.TOTP({
+            issuer: 'DataModelerCloud',
+            label: 'user',
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: secret
+          });
+          
+          // Verify with a window of 1 period before/after
+          const delta = totp.validate({ token, window: 1 });
+          verified = delta !== null;
+        } catch (e) {
+          console.error('Error validating TOTP:', e);
+          verified = false;
+        }
+      } else {
+        // For settings or other flows, use the auth context
+        verified = await validateTwoFactorToken(token);
+      }
       
       if (verified) {
         onSuccess();
       } else {
-        setError('Invalid verification code. Please try again.');
+        // Decrease remaining attempts
+        const newAttempts = remainingAttempts - 1;
+        setRemainingAttempts(newAttempts);
+        
+        if (newAttempts <= 0) {
+          setError('Too many failed attempts. Please try again later.');
+          setTimeout(() => {
+            onCancel(); // Return to sign-in form after too many failed attempts
+          }, 2000);
+        } else {
+          setError(`Invalid verification code. ${newAttempts} attempts remaining.`);
+        }
       }
     } catch (err) {
       setError('Failed to verify code. Please try again.');

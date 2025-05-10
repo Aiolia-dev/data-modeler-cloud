@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { TwoFactorVerify } from './two-factor-verify';
+import { signInAction } from "@/app/actions";
+import { useAuth } from '@/context/auth-context';
 
 export function SignInForm({ message }: { message?: { type: string; text: string } }) {
   const [email, setEmail] = useState('');
@@ -16,45 +17,69 @@ export function SignInForm({ message }: { message?: { type: string; text: string
   const [isLoading, setIsLoading] = useState(false);
   const [showTwoFactor, setShowTwoFactor] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [twoFactorSecret, setTwoFactorSecret] = useState('');
   const router = useRouter();
   const supabase = createClientComponentClient();
+  const { isTwoFactorEnabled, isTwoFactorVerified } = useAuth();
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  // Use client-side authentication first to check for 2FA
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
+    
     try {
-      // Sign in with email and password
+      // First, try to sign in with password to check if 2FA is needed
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-
-      if (error) {
-        setError(error.message);
+      
+      if (error) throw error;
+      
+      // Check if the user has 2FA enabled
+      if (data.user && data.user.user_metadata?.two_factor_enabled === true) {
+        // Store the user and show 2FA verification
+        setUser(data.user);
+        setTwoFactorSecret(data.user.user_metadata?.totp_secret || '');
+        setShowTwoFactor(true);
+        setIsLoading(false);
         return;
       }
-
-      // Check if 2FA is enabled for this user
-      if (data.user.user_metadata?.two_factor_enabled === true) {
-        // Store the user data and show 2FA verification
-        setUser(data.user);
-        setShowTwoFactor(true);
-      } else {
-        // No 2FA, redirect to protected area
-        router.push('/protected');
-      }
+      
+      // If 2FA is not enabled, proceed with the server action for session handling
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('skip2FA', 'true'); // Indicate that 2FA check is already done
+      
+      // Use the server action to handle authentication
+      await signInAction(formData);
+      
+      // The server action will handle the redirect
     } catch (err: any) {
+      console.error('Sign-in error:', err);
       setError(err.message || 'An error occurred during sign in');
-    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleTwoFactorSuccess = () => {
-    // 2FA verification successful, redirect to protected area
-    router.push('/protected');
+  const handleTwoFactorSuccess = async () => {
+    // 2FA verification successful, proceed with server action for session handling
+    try {
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('twoFactorVerified', 'true');
+      
+      // Use the server action to handle authentication and session
+      await signInAction(formData);
+      
+      // The server action will handle the redirect
+    } catch (err: any) {
+      console.error('Error after 2FA verification:', err);
+      setError(err.message || 'An error occurred after 2FA verification');
+    }
   };
 
   const handleTwoFactorCancel = async () => {
@@ -69,12 +94,13 @@ export function SignInForm({ message }: { message?: { type: string; text: string
       <TwoFactorVerify
         onSuccess={handleTwoFactorSuccess}
         onCancel={handleTwoFactorCancel}
+        secret={twoFactorSecret}
       />
     );
   }
 
   return (
-    <form className="flex flex-col w-full" onSubmit={handleSignIn}>
+    <form className="flex flex-col w-full" onSubmit={handleSubmit} action={signInAction}>
       <h1 className="text-2xl font-medium mb-2">Sign in</h1>
       <p className="text-sm text-gray-400 mb-8">
         Access your data modeling workspace
