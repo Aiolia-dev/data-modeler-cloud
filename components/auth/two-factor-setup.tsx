@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface TwoFactorSetupProps {
   onComplete?: () => void;
@@ -45,11 +45,36 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
     try {
       setIsVerifying(true);
       setError('');
-      const verified = await verifyTwoFactor(token);
+      
+      console.log('Verifying 2FA setup with token:', token, 'and secret:', secret ? secret.substring(0, 5) + '...' : 'none');
+      
+      // Pass both the token and the secret from the setup process
+      const verified = await verifyTwoFactor(token, secret);
+      
       if (verified) {
+        console.log('2FA setup verification successful');
         setSuccess(true);
         // In a real implementation, you would get recovery codes from the backend
         setRecoveryCodes(['ABCDE-12345', 'FGHIJ-67890', 'KLMNO-13579', 'PQRST-24680']);
+        
+        // Force a refresh of the auth state to ensure the 2FA status is updated
+        try {
+          const { data, error } = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }).then(res => res.json());
+          
+          if (error) {
+            console.error('Error refreshing auth state:', error);
+          } else {
+            console.log('Auth state refreshed successfully');
+          }
+        } catch (refreshError) {
+          console.error('Failed to refresh auth state:', refreshError);
+        }
+        
         if (onComplete) {
           setTimeout(() => {
             onComplete();
@@ -115,7 +140,7 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
               Scan this QR code with your authenticator app (like Google Authenticator, Authy, or Microsoft Authenticator).
             </p>
             <div className="flex justify-center bg-white p-4 rounded-md">
-              <QRCode value={qrCode} size={200} />
+              <QRCodeSVG value={qrCode} size={200} />
             </div>
           </div>
 

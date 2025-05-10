@@ -307,22 +307,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // First, try to update Supabase user metadata
         console.log('Updating Supabase user metadata with 2FA status for user:', user.id);
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: {
-            two_factor_enabled: true,
-            totp_secret: secret
-          }
-        });
         
-        if (updateError) {
-          console.error('Error updating user metadata in Supabase:', updateError);
-          // Continue anyway and use local storage as fallback
-        } else {
-          console.log('Successfully updated user metadata in Supabase');
+        // Make multiple attempts to update the user metadata
+        // This is a workaround for the Supabase session issues
+        let updateSuccess = false;
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        while (!updateSuccess && attempts < maxAttempts) {
+          attempts++;
+          console.log(`Attempt ${attempts} to update user metadata`);
           
-          // Refresh the session to ensure the updated metadata is available
-          await refreshSession();
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: {
+              two_factor_enabled: true,
+              totp_secret: secret
+            }
+          });
+          
+          if (updateError) {
+            console.error(`Error updating user metadata (attempt ${attempts}):`, updateError);
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+            // Try to refresh the session before retrying
+            await refreshSession();
+          } else {
+            console.log(`Successfully updated user metadata on attempt ${attempts}`);
+            updateSuccess = true;
+          }
         }
+        
+        // Verify that the metadata was actually updated
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (!userError) {
+          console.log('User metadata after update:', userData.user?.user_metadata);
+          const metadataUpdated = userData.user?.user_metadata?.two_factor_enabled === true;
+          console.log('2FA enabled in metadata after update:', metadataUpdated);
+          
+          if (!metadataUpdated) {
+            console.warn('2FA status not properly updated in metadata, will rely on local storage');
+          }
+        }
+        
+        // Refresh the session to ensure the updated metadata is available
+        await refreshSession();
         
         // Also store in local storage as a fallback, but use user-specific keys
         // This prevents one user's 2FA settings from affecting another user on the same browser

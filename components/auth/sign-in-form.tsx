@@ -41,17 +41,46 @@ export function SignInForm({ message }: { message?: { type: string; text: string
       console.log('User metadata after sign-in:', data.user?.user_metadata);
       console.log('2FA enabled in metadata:', data.user?.user_metadata?.two_factor_enabled);
       
-      // Check if 2FA is enabled for THIS specific user by checking their metadata
-      // We should NOT use localStorage here as it's global and would affect all users on the same browser
+      // Check if 2FA is enabled for THIS specific user by checking both metadata and user-specific localStorage
       const metadataEnabled = data.user?.user_metadata?.two_factor_enabled === true;
+      const localStorageEnabled = localStorage.getItem(`dm_two_factor_enabled_${data.user?.id}`) === 'true';
       
       console.log(`User ${data.user?.id} 2FA status:`, {
         metadataEnabled,
+        localStorageEnabled,
         userMetadata: data.user?.user_metadata
       });
       
-      // Only proceed with 2FA verification if THIS user has it enabled in their metadata
-      if (metadataEnabled) {
+      // Check if we need to fetch the latest user metadata
+      // This is a workaround for the Supabase session issues
+      if (localStorageEnabled && !metadataEnabled) {
+        console.log('2FA enabled in localStorage but not in metadata, fetching latest user data...');
+        
+        try {
+          // Try to refresh the auth state to get the latest metadata
+          const refreshResponse = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }).then(res => res.json());
+          
+          if (refreshResponse.user?.user_metadata?.two_factor_enabled === true) {
+            console.log('Updated metadata shows 2FA is enabled');
+            setUser(refreshResponse.user);
+            const secret = refreshResponse.user.user_metadata?.totp_secret || localStorage.getItem(`dm_totp_secret_${data.user?.id}`);
+            setTwoFactorSecret(secret || '');
+            setShowTwoFactor(true);
+            setIsLoading(false);
+            return;
+          }
+        } catch (refreshError) {
+          console.error('Error refreshing auth state:', refreshError);
+        }
+      }
+      
+      // Proceed with 2FA verification if enabled in either metadata or localStorage
+      if (metadataEnabled || localStorageEnabled) {
         console.log('2FA is enabled, showing verification screen');
         // Store the user and show 2FA verification
         setUser(data.user);
