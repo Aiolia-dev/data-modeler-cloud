@@ -41,7 +41,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
   // Get permission context to check if user can create entities
   const { 
     hasPermission, 
-    forceRefreshPermissions, 
+    fetchPermissions, 
     projectPermissions, 
     currentProjectRole, 
     currentProjectId, 
@@ -96,7 +96,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
     } else {
       // Fallback to regular refresh
       console.log('Using regular refresh function');
-      forceRefreshPermissions();
+      fetchPermissions();
       
       // Also trigger a local storage event to notify other tabs
       if (typeof window !== 'undefined') {
@@ -434,10 +434,10 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
                   foreignKeyCounts={foreignKeyCounts}
                   relationshipCounts={relationshipCounts}
                   ruleCounts={ruleCounts}
-                  attributeCountsLoading={attributeCountsLoading}
-                  foreignKeyCountsLoading={foreignKeyCountsLoading}
-                  relationshipCountsLoading={relationshipCountsLoading}
-                  ruleCountsLoading={ruleCountsLoading}
+                  attributeCountsLoading={{ [modelId]: attributeCountsLoading }}
+                  foreignKeyCountsLoading={{ [modelId]: foreignKeyCountsLoading }}
+                  relationshipCountsLoading={{ [modelId]: relationshipCountsLoading }}
+                  ruleCountsLoading={{ [modelId]: ruleCountsLoading }}
                   onSelectEntity={handleSelectEntity}
                   onViewInModel={(entityId) => {
                     // Navigate to diagram tab with selected entity
