@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
+import { getProjectRole, isMethodAllowedForRole } from '@/middleware/role-check';
 
 export async function GET(request: Request) {
   console.log('GET /api/entities - Fetching entities');
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
       // First verify the data model exists
       const { data: dataModel, error: dataModelError } = await adminClient
         .from('data_models')
-        .select('id')
+        .select('id, project_id')
         .eq('id', data_model_id)
         .single();
         
@@ -152,6 +153,29 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: 'Data model not found', details: dataModelError.message },
           { status: 404 }
+        );
+      }
+      
+      // Check user's role for this project
+      const projectId = dataModel.project_id;
+      console.log(`Checking user role for project ${projectId}`);
+      
+      const { role, error: roleError } = await getProjectRole(projectId);
+      
+      if (roleError) {
+        console.error('Role check error:', roleError);
+        return NextResponse.json(
+          { error: 'Permission error', details: roleError },
+          { status: 403 }
+        );
+      }
+      
+      // Check if the user's role allows POST requests
+      if (!isMethodAllowedForRole('POST', role)) {
+        console.error(`User with role ${role} not allowed to create entities`);
+        return NextResponse.json(
+          { error: 'Insufficient permissions to create entities' },
+          { status: 403 }
         );
       }
       

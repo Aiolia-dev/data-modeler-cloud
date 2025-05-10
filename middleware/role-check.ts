@@ -298,7 +298,14 @@ export async function getProjectRole(
     console.log(`[getProjectRole] Current user: ${user.email} (${user.id})`);
     
     // Check if user is a superuser (always has access)
-    if (user.user_metadata?.is_superuser === "true") {
+    const superuserFlag = user.user_metadata?.is_superuser;
+    console.log(`[getProjectRole] Superuser check - Flag value:`, superuserFlag);
+    console.log(`[getProjectRole] Superuser check - Flag type:`, typeof superuserFlag);
+    console.log(`[getProjectRole] Superuser check - Strict comparison with "true":`, superuserFlag === "true");
+    console.log(`[getProjectRole] Superuser check - Loose comparison with true:`, superuserFlag == true);
+    console.log(`[getProjectRole] Superuser check - Raw user metadata:`, JSON.stringify(user.user_metadata));
+    
+    if (user.user_metadata?.is_superuser === "true" || user.user_metadata?.is_superuser === true) {
       console.log(`[getProjectRole] User is superuser, granting admin role`);
       return { role: 'admin' };
     }

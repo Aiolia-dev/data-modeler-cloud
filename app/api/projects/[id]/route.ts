@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
+import { getProjectRole, isMethodAllowedForRole } from '@/middleware/role-check';
 
 export async function GET(
   request: NextRequest,
@@ -221,11 +222,24 @@ export async function DELETE(
       );
     }
     
-    // Check if the user is the creator of the project
-    if (project.created_by !== user.id) {
-      console.error('User is not the creator of the project');
+    // Check user's role for this project
+    console.log(`Checking user role for project ${projectId}`);
+    
+    const { role, error: roleError } = await getProjectRole(projectId);
+    
+    if (roleError) {
+      console.error('Role check error:', roleError);
       return NextResponse.json(
-        { error: 'Unauthorized - Only the creator can delete a project' },
+        { error: 'Permission error', details: roleError },
+        { status: 403 }
+      );
+    }
+    
+    // Check if the user's role allows DELETE requests
+    if (!isMethodAllowedForRole('DELETE', role)) {
+      console.error(`User with role ${role} not allowed to delete projects`);
+      return NextResponse.json(
+        { error: 'Insufficient permissions to delete this project' },
         { status: 403 }
       );
     }

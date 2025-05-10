@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useAuth } from './auth-context';
 
 // Define all possible user roles
-export type UserRole = 'viewer' | 'editor' | 'owner';
+export type UserRole = 'viewer' | 'editor' | 'owner' | 'admin';
 
 // Define permission actions
 export type PermissionAction = 'create' | 'read' | 'update' | 'delete' | 'view' | 'edit';
@@ -14,6 +15,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, PermissionAction[]> = {
   viewer: ['read', 'view'],
   editor: ['create', 'read', 'update', 'view', 'edit'],
   owner: ['create', 'read', 'update', 'delete', 'view', 'edit'],
+  admin: ['create', 'read', 'update', 'delete', 'view', 'edit'],
 } as const;
 
 interface ProjectPermission {
@@ -32,23 +34,28 @@ declare global {
 // Define the context type
 type PermissionContextType = {
   isAuthenticated: boolean;
+  isSuperuser: boolean;
+  userId: string | null;
   userEmail: string | null;
-  loading: boolean;
   projectPermissions: ProjectPermission[];
   currentProjectId: string | null;
   currentProjectRole: UserRole | null;
-  hasPermission: (action: PermissionAction, targetProjectId?: string) => boolean;
-  refreshPermissions: () => Promise<void>;
-  forceRefreshPermissions: () => Promise<void>;
-  // Additional properties for backward compatibility
-  isSuperuser: boolean;
-  userId: string | null;
+  loading: boolean;
+  hasPermission: (action: PermissionAction, projectId?: string) => boolean;
   setCurrentProjectId: (projectId: string | null) => void;
+  fetchPermissions: () => Promise<void>;
+  setIsAuthenticated: (value: boolean) => void;
+  setIsSuperuser: (value: boolean) => void;
+  setUserId: (value: string | null) => void;
+  setUserEmail: (value: string | null) => void;
 };
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
 
 export function PermissionProvider({ children }: { children: ReactNode }) {
+  // Use the auth context for authentication state
+  const { user, isAuthenticated: authIsAuthenticated, isSuperuser: authIsSuperuser } = useAuth();
+  
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [projectPermissions, setProjectPermissions] = useState<ProjectPermission[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -59,6 +66,21 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const supabase = createClientComponentClient();
+  
+  // Sync with auth context
+  useEffect(() => {
+    if (authIsAuthenticated && user) {
+      setIsAuthenticated(true);
+      setUserEmail(user.email || null);
+      setUserId(user.id);
+      setIsSuperuser(authIsSuperuser);
+      console.log('Permission context synced with auth context:', {
+        email: user.email,
+        id: user.id,
+        isSuperuser: authIsSuperuser
+      });
+    }
+  }, [authIsAuthenticated, user, authIsSuperuser]);
 
   // Fetch permissions function that identifies the user's role by email
   const fetchPermissions = useCallback(async () => {
@@ -66,19 +88,21 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       console.log('Fetching permissions...');
       
-      // Get the user's email from the UI
-      const emailElement = document.querySelector('.user-email');
-      let email = emailElement?.textContent?.trim();
+      // First try to get user directly from Supabase auth
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       
-      console.log('Email element found:', !!emailElement, 'Email:', email);
+      if (authError) {
+        console.error('Error getting authenticated user:', authError);
+      }
       
-      // If no email found in UI, try to get it from Supabase auth
+      let email = authUser?.email;
+      console.log('Got user from Supabase auth:', authUser?.id, email);
+      
+      // If no email from auth, try to get from UI
       if (!email) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-          email = user.email;
-          console.log('Got email from Supabase auth:', email);
-        }
+        const emailElement = document.querySelector('.user-email');
+        email = emailElement?.textContent?.trim();
+        console.log('Email element found:', !!emailElement, 'Email:', email);
       }
       
       // If still no email, check the header element which might contain the email
@@ -130,32 +154,42 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
       setUserEmail(email);
       setIsAuthenticated(true); // Set authenticated to true since we have a valid email
       
-      // Check if the user is a superuser by fetching their metadata from Supabase
+      // Check if the user is a superuser using the authUser we already retrieved
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+        if (authUser) {
           // Check if the user has the is_superuser flag in their metadata
-          const isSuperuserFlag = user.user_metadata?.is_superuser;
-          const newSuperuserStatus = isSuperuserFlag === true || isSuperuserFlag === 'true';
+          const isSuperuserFlag = authUser.user_metadata?.is_superuser;
           
-          console.log('User metadata:', user.user_metadata);
-          console.log('Is superuser flag:', isSuperuserFlag);
+          // Enhanced debugging for superuser flag
+          console.log('User metadata:', authUser.user_metadata);
+          console.log('Is superuser flag value:', isSuperuserFlag);
+          console.log('Is superuser flag type:', typeof isSuperuserFlag);
+          console.log('Strict comparison with "true":', isSuperuserFlag === "true");
+          console.log('Strict comparison with true:', isSuperuserFlag === true);
+          console.log('Loose comparison with true:', isSuperuserFlag == true);
+          
+          // Match the server-side check for consistency
+          const newSuperuserStatus = isSuperuserFlag === true || isSuperuserFlag === "true";
           console.log('Setting superuser status to:', newSuperuserStatus);
           
           // Update the superuser status
           setIsSuperuser(newSuperuserStatus);
           
           // Also set the user ID if available
-          if (user.id) {
-            setUserId(user.id);
+          if (authUser.id) {
+            setUserId(authUser.id);
           }
         } else {
-          console.log('No user found in auth.getUser() response');
-          setIsSuperuser(false);
+          // Fallback for when auth session is missing but we have an email
+          console.log('No authenticated user found, but we have email:', email);
+          // If we're in a development environment, we might want to set superuser status for testing
+          if (process.env.NODE_ENV === 'development' && email === 'cedric.kerbidi@outscale.com') {
+            console.log('Development environment detected, setting superuser status for known admin email');
+            setIsSuperuser(true);
+          }
         }
-      } catch (error) {
-        console.error('Error checking superuser status:', error);
-        setIsSuperuser(false);
+      } catch (metadataError) {
+        console.error('Error processing user metadata:', metadataError);
       }
       
       // Extract project ID from URL if possible
@@ -396,7 +430,8 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     }
     
     // Superusers always have all permissions
-    if (isSuperuser) {
+    // Use both the local state and the auth context state for maximum reliability
+    if (isSuperuser || authIsSuperuser) {
       console.log('PERMISSION CHECK: User is superuser, granting permission');
       return true;
     }
@@ -454,32 +489,31 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     isAuthenticated,
+    isSuperuser,
+    userId,
     userEmail,
-    loading,
     projectPermissions,
     currentProjectId,
     currentProjectRole,
+    loading,
     hasPermission,
-    refreshPermissions: fetchPermissions,
-    forceRefreshPermissions,
-    // Keep these for backward compatibility
-    isSuperuser,
-    userId,
-    setCurrentProjectId
+    setCurrentProjectId,
+    fetchPermissions,
+    setIsAuthenticated,
+    setIsSuperuser,
+    setUserId,
+    setUserEmail,
   }), [
     isAuthenticated,
+    isSuperuser,
+    userId,
     userEmail,
-    loading,
     projectPermissions,
     currentProjectId,
     currentProjectRole,
+    loading,
     hasPermission,
-    fetchPermissions,
-    forceRefreshPermissions,
-    // Dependencies for backward compatibility
-    isSuperuser,
-    userId,
-    setCurrentProjectId
+    fetchPermissions
   ]);
 
   return (

@@ -11,6 +11,8 @@ import "../styles/custom-inputs.css";
 import "../styles/form-fixes.css"; // Fix for flashy red background on invalid inputs
 import { SettingsProvider } from "@/contexts/settings-context";
 import { PermissionProvider } from "@/context/permission-context";
+import { AuthProviderWrapper } from "@/components/ui/auth-provider-wrapper";
+import { AuthSyncProvider } from "@/components/ui/auth-sync-provider";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -42,7 +44,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SettingsProvider>
+          <AuthProviderWrapper>
           <PermissionProvider>
+          <AuthSyncProvider>
           <main className="min-h-screen flex flex-col items-center">
             <div className="flex-1 w-full flex flex-col gap-4 items-center">
               <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
@@ -75,7 +79,9 @@ export default function RootLayout({
               </div>
             </div>
           </main>
+          </AuthSyncProvider>
           </PermissionProvider>
+          </AuthProviderWrapper>
           </SettingsProvider>
         </ThemeProvider>
         <div id="overlay-root"></div>

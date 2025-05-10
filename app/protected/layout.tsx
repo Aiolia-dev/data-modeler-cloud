@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { NavigationProvider, useNavigation } from "@/context/navigation-context";
 import { ProjectRefreshProvider } from "@/context/project-refresh-context";
 import AdminHeaderButtons from "@/components/navigation/admin-header-buttons";
+import { PermissionDebug } from "@/components/ui/permission-debug";
+import { AuthDebug } from "@/components/ui/auth-debug";
 
 function ProtectedLayoutContent({
   children,
@@ -87,6 +89,10 @@ function ProtectedLayoutContent({
             {children}
           </div>
         </div>
+        
+        {/* Debug Tools */}
+        <PermissionDebug />
+        <AuthDebug />
       </div>
     </div>
   );
