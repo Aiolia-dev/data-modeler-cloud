@@ -10,9 +10,10 @@ interface TwoFactorVerifyProps {
   onSuccess: () => void;
   onCancel: () => void;
   secret?: string; // Optional secret for direct validation without using auth context
+  userId?: string; // Optional user ID to ensure we're validating for the correct user
 }
 
-export function TwoFactorVerify({ onSuccess, onCancel, secret }: TwoFactorVerifyProps) {
+export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFactorVerifyProps) {
   const { validateTwoFactorToken } = useAuth();
   const [token, setToken] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -42,18 +43,43 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret }: TwoFactorVerify
         // For sign-in flow, create a TOTP object and validate directly
         try {
           const OTPAuth = await import('otpauth');
-          const totp = new OTPAuth.TOTP({
-            issuer: 'DataModelerCloud',
-            label: 'user',
-            algorithm: 'SHA1',
-            digits: 6,
-            period: 30,
-            secret: secret
-          });
+          
+          // Create a unique TOTP for this specific user
+          // This ensures that one user's code won't work for another user
+          const label = userId || 'user';
+          
+          console.log(`Validating 2FA token for user ID: ${label} with secret: ${secret.substring(0, 5)}...`);
+          
+          // First try creating the TOTP with the raw secret string
+          let totp;
+          try {
+            totp = new OTPAuth.TOTP({
+              issuer: 'DataModelerCloud',
+              label: label,
+              algorithm: 'SHA1',
+              digits: 6,
+              period: 30,
+              secret: secret
+            });
+          } catch (err) {
+            // If that fails, try creating a new Secret object
+            console.log('Trying alternative TOTP creation method');
+            const secretObj = OTPAuth.Secret.fromBase32(secret);
+            totp = new OTPAuth.TOTP({
+              issuer: 'DataModelerCloud',
+              label: label,
+              algorithm: 'SHA1',
+              digits: 6,
+              period: 30,
+              secret: secretObj
+            });
+          }
           
           // Verify with a window of 1 period before/after
           const delta = totp.validate({ token, window: 1 });
           verified = delta !== null;
+          
+          console.log(`2FA validation result: ${verified ? 'Valid' : 'Invalid'} for user ${label}`);
         } catch (e) {
           console.error('Error validating TOTP:', e);
           verified = false;

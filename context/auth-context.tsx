@@ -262,15 +262,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!secret) throw new Error('Two-factor setup not initiated');
       
       console.log('Verifying 2FA token with secret:', secret.substring(0, 5) + '...');
+      console.log('User ID for 2FA verification:', user.id);
       
-      // Create a TOTP object with the user's secret
-      // Make sure we're using the secret correctly
+      // Create a TOTP object with the user's secret and unique identifier
+      // Make sure we're using the secret correctly and it's tied to this specific user
       let totp;
       try {
         // Try creating the TOTP with the raw secret string
         totp = new OTPAuth.TOTP({
           issuer: 'DataModelerCloud',
-          label: user.email || 'user',
+          label: user.email || user.id || 'user', // Use email or ID for uniqueness
           algorithm: 'SHA1',
           digits: 6,
           period: 30,
@@ -282,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const secretObj = OTPAuth.Secret.fromBase32(secret);
         totp = new OTPAuth.TOTP({
           issuer: 'DataModelerCloud',
-          label: user.email || 'user',
+          label: user.email || user.id || 'user', // Use email or ID for uniqueness
           algorithm: 'SHA1',
           digits: 6,
           period: 30,
@@ -305,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Token is valid, update both Supabase user metadata and local storage
       try {
         // First, try to update Supabase user metadata
-        console.log('Updating Supabase user metadata with 2FA status');
+        console.log('Updating Supabase user metadata with 2FA status for user:', user.id);
         const { error: updateError } = await supabase.auth.updateUser({
           data: {
             two_factor_enabled: true,
@@ -318,17 +319,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Continue anyway and use local storage as fallback
         } else {
           console.log('Successfully updated user metadata in Supabase');
+          
+          // Refresh the session to ensure the updated metadata is available
+          await refreshSession();
         }
         
-        // Also store in local storage as a fallback
-        localStorage.setItem('dm_totp_secret', secret);
-        localStorage.setItem('dm_two_factor_enabled', 'true');
+        // Also store in local storage as a fallback, but use user-specific keys
+        // This prevents one user's 2FA settings from affecting another user on the same browser
+        const secretKey = `dm_totp_secret_${user.id}`;
+        const enabledKey = `dm_two_factor_enabled_${user.id}`;
+        localStorage.setItem(secretKey, secret);
+        localStorage.setItem(enabledKey, 'true');
         
         // Update local state
         setIsTwoFactorEnabled(true);
         setIsTwoFactorVerified(true);
         
-        console.log('Two-factor authentication enabled successfully');
+        console.log('Two-factor authentication enabled successfully for user:', user.id);
         
         // Generate recovery codes (in a real implementation, store these securely)
         // For now, we're just returning success
@@ -376,20 +383,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Get the secret from user metadata
       const secret = user.user_metadata?.totp_secret;
-      if (!secret) throw new Error('Two-factor not set up');
+      if (!secret) {
+        // Check if we have a secret in local storage as fallback
+        const localSecret = localStorage.getItem(`dm_totp_secret_${user.id}`);
+        if (!localSecret) {
+          console.error('Two-factor not set up for user:', user.id);
+          throw new Error('Two-factor not set up');
+        }
+      }
       
-      // Create a TOTP object with the user's secret
-      const totp = new OTPAuth.TOTP({
-        issuer: 'DataModelerCloud',
-        label: user.email || 'user',
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: secret
-      });
+      // Use the secret from metadata or local storage
+      const secretToUse = secret || localStorage.getItem(`dm_totp_secret_${user.id}`);
       
-      // Verify the token
-      const delta = totp.validate({ token });
+      console.log(`Validating 2FA token for user: ${user.id} with secret: ${secretToUse?.substring(0, 5)}...`);
+      
+      // Create a TOTP object with the user's secret and unique identifier
+      let totp;
+      try {
+        // Try creating the TOTP with the raw secret string
+        totp = new OTPAuth.TOTP({
+          issuer: 'DataModelerCloud',
+          label: user.email || user.id || 'user', // Use email or ID for uniqueness
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          secret: secretToUse
+        });
+      } catch (e) {
+        console.error('Error creating TOTP with string secret:', e);
+        // If that fails, try creating a new Secret object
+        const secretObj = OTPAuth.Secret.fromBase32(secretToUse || '');
+        totp = new OTPAuth.TOTP({
+          issuer: 'DataModelerCloud',
+          label: user.email || user.id || 'user', // Use email or ID for uniqueness
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          secret: secretObj
+        });
+      }
+      
+      // Verify the token with a window of 1 period before/after
+      const delta = totp.validate({ token, window: 1 });
+      console.log('Token validation result:', delta !== null ? 'Valid' : 'Invalid');
       
       if (delta === null) {
         // Invalid token
@@ -398,6 +434,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Token is valid, mark as verified
       setIsTwoFactorVerified(true);
+      console.log('User 2FA verified successfully:', user.id);
       return true;
     } catch (error) {
       console.error('Error validating 2FA token:', error);

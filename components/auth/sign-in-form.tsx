@@ -41,12 +41,17 @@ export function SignInForm({ message }: { message?: { type: string; text: string
       console.log('User metadata after sign-in:', data.user?.user_metadata);
       console.log('2FA enabled in metadata:', data.user?.user_metadata?.two_factor_enabled);
       
-      // Check both user metadata and local storage for 2FA status
-      // This ensures we catch 2FA even if there are Supabase metadata issues
+      // Check if 2FA is enabled for THIS specific user by checking their metadata
+      // We should NOT use localStorage here as it's global and would affect all users on the same browser
       const metadataEnabled = data.user?.user_metadata?.two_factor_enabled === true;
-      const localStorageEnabled = localStorage.getItem('dm_two_factor_enabled') === 'true';
       
-      if (metadataEnabled || localStorageEnabled) {
+      console.log(`User ${data.user?.id} 2FA status:`, {
+        metadataEnabled,
+        userMetadata: data.user?.user_metadata
+      });
+      
+      // Only proceed with 2FA verification if THIS user has it enabled in their metadata
+      if (metadataEnabled) {
         console.log('2FA is enabled, showing verification screen');
         // Store the user and show 2FA verification
         setUser(data.user);
@@ -114,6 +119,7 @@ export function SignInForm({ message }: { message?: { type: string; text: string
         onSuccess={handleTwoFactorSuccess}
         onCancel={handleTwoFactorCancel}
         secret={twoFactorSecret}
+        userId={user?.id} // Pass the user ID to ensure token is validated for the correct user
       />
     );
   }
