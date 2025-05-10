@@ -148,11 +148,8 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
           console.error('Failed to refresh auth state:', refreshError);
         }
         
-        if (onComplete) {
-          setTimeout(() => {
-            onComplete();
-          }, 3000);
-        }
+        // Don't automatically dismiss the recovery codes screen
+        // The user will need to explicitly confirm they've saved the codes
       } else {
         setError('Invalid verification code. Please try again.');
       }
@@ -182,9 +179,18 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
               <div key={index} className="py-1">{code}</div>
             ))}
           </div>
-          <p className="text-sm text-amber-400">
+          <p className="text-sm text-amber-400 font-medium">
             Warning: These codes will only be shown once. If you lose them, you'll need to generate new ones.
           </p>
+          <p className="text-sm text-gray-400 mt-4">
+            Please make sure you have saved these recovery codes before continuing.
+          </p>
+          <Button 
+            onClick={onComplete} 
+            className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            I've Saved My Recovery Codes
+          </Button>
         </div>
       </div>
     );
