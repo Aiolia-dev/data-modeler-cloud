@@ -29,24 +29,17 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
       return;
     }
 
-    if (token.length !== 6 || !/^\d+$/.test(token)) {
+    // Ensure token is a 6-digit number
+    if (!/^\d{6}$/.test(token)) {
       setError('Verification code must be 6 digits');
       return;
     }
-    
-    // Log the token for debugging
+
     console.log('Verifying token:', token);
     console.log('Testing mode:', testMode ? 'ON' : 'OFF');
     
-    // Only bypass validation if testMode is false
-    // This allows for testing the actual validation in development
-    if (!testMode && typeof process !== 'undefined' && 
-        process.env && 
-        process.env.NODE_ENV !== 'production') {
-      console.log('DEVELOPMENT MODE: Bypassing actual TOTP validation');
-      onSuccess();
-      return;
-    }
+    // In production or when testing mode is ON, we'll proceed with actual validation
+    // We no longer bypass validation in development mode to ensure proper testing
     
     // If testing mode is ON, we'll proceed with actual validation
 
@@ -329,27 +322,14 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
                     <p className="text-gray-400">Current time: {new Date().toISOString()}</p>
                     <p className="text-green-400 mt-1">Emergency codes enabled</p>
                     <div className="mt-2">
-                      <p className="text-blue-400">Debug Actions:</p>
-                      <button 
-                        onClick={() => {
-                          // Force success for the current token
-                          setToken(token);
-                          onSuccess();
-                        }}
-                        className="mt-1 px-2 py-1 text-xs bg-blue-700 text-white rounded w-full text-left"
-                      >
-                        Force Success (Emergency Override)
-                      </button>
-                      <button 
-                        onClick={() => {
-                          // Use a test code that should work
-                          setToken('123456');
-                          handleVerify();
-                        }}
-                        className="mt-1 px-2 py-1 text-xs bg-green-700 text-white rounded w-full text-left"
-                      >
-                        Try Test Code (123456)
-                      </button>
+                      <p className="text-blue-400">Debug Information:</p>
+                      <p className="text-yellow-400 mt-1">To verify your account:</p>
+                      <ol className="list-decimal list-inside text-yellow-300 text-xs mt-1">
+                        <li>Open your authenticator app</li>
+                        <li>Find the DataModelerCloud entry</li>
+                        <li>Enter the 6-digit code shown</li>
+                      </ol>
+                      <p className="text-gray-400 mt-2 text-xs">Note: Only the correct code from your authenticator app will work.</p>
                     </div>
                   </div>
                 )}
