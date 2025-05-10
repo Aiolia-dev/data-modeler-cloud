@@ -212,7 +212,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // First, try to refresh the session to ensure we have a valid session
       console.log('Refreshing session before setting up 2FA...');
-      await refreshSession();
+      try {
+        await refreshSession();
+        console.log('Session refreshed successfully');
+      } catch (refreshError) {
+        console.error('Error refreshing session:', refreshError);
+        // Continue anyway - the session might still be valid
+      }
       
       // Generate a new TOTP secret
       const appName = 'DataModelerCloud';
@@ -235,26 +241,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       console.log('TOTP parameters for setup:', JSON.stringify(secretParams));
       
-      // CRITICAL FIX: Immediately store the secret in user metadata
-      // This ensures the secret is saved before the user scans the QR code
-      console.log('Pre-storing TOTP secret in user metadata to ensure consistency');
+      // Store the secret in local storage as a temporary backup
+      // This will be used if the Supabase update fails
       try {
-        const { error: prestoreError } = await supabase.auth.updateUser({
-          data: {
-            totp_secret: secretBase32,
-            totp_setup_time: new Date().toISOString()
-          }
-        });
-        
-        if (prestoreError) {
-          console.error('Error pre-storing TOTP secret:', prestoreError);
-          // Continue anyway - we'll try again during verification
-        } else {
-          console.log('Successfully pre-stored TOTP secret in user metadata');
-        }
-      } catch (prestoreError) {
-        console.error('Exception pre-storing TOTP secret:', prestoreError);
-        // Continue anyway - we'll try again during verification
+        localStorage.setItem('dm_pending_totp_secret', secretBase32);
+        console.log('Stored TOTP secret in local storage as backup');
+      } catch (storageError) {
+        console.error('Error storing TOTP secret in local storage:', storageError);
       }
       
       // IMPORTANT: Create the TOTP object using the base32 string directly
@@ -274,6 +267,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Generate a QR code URL
       const qrCode = totp.toString();
+      
+      // We'll try to update the user metadata, but we won't block the QR code display
+      // This way, the user can still set up 2FA even if there's a session issue
+      setTimeout(async () => {
+        try {
+          console.log('Attempting to store TOTP secret in user metadata...');
+          const { error: updateError } = await supabase.auth.updateUser({
+            data: {
+              totp_secret: secretBase32,
+              totp_setup_time: new Date().toISOString()
+            }
+          });
+          
+          if (updateError) {
+            console.error('Error storing TOTP secret in user metadata:', updateError);
+          } else {
+            console.log('Successfully stored TOTP secret in user metadata');
+          }
+        } catch (updateError) {
+          console.error('Exception storing TOTP secret:', updateError);
+        }
+      }, 1000); // Delay by 1 second to avoid blocking the UI
       
       // DIAGNOSTIC: Log detailed information about the QR code
       console.log('DIAGNOSTIC - Full QR code URI:', qrCode);
