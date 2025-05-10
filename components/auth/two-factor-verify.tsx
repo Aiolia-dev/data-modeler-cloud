@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,9 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
   const [token, setToken] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
-  const [remainingAttempts, setRemainingAttempts] = useState(3); // Add attempt counter
+  const [attempts, setAttempts] = useState(3);
+  const [testMode, setTestMode] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleVerify = async () => {
     if (!token) {
@@ -31,12 +33,12 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
       return;
     }
     
-    // TEMPORARY: Log the token for debugging
+    // Log the token for debugging
     console.log('Verifying token:', token);
     
-    // TEMPORARY: For testing purposes only - remove in production
-    // This allows any 6-digit code to work during development
-    if (typeof process !== 'undefined' && 
+    // Only bypass validation if testMode is false
+    // This allows for testing the actual validation in development
+    if (!testMode && typeof process !== 'undefined' && 
         process.env && 
         process.env.NODE_ENV !== 'production') {
       console.log('DEVELOPMENT MODE: Bypassing actual TOTP validation');
@@ -129,8 +131,8 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
         onSuccess();
       } else {
         // Decrease remaining attempts
-        const newAttempts = remainingAttempts - 1;
-        setRemainingAttempts(newAttempts);
+        const newAttempts = attempts - 1;
+        setAttempts(newAttempts);
         
         if (newAttempts <= 0) {
           setError('Too many failed attempts. Please try again later.');
@@ -151,14 +153,37 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-center justify-center mb-6">
-        <div className="bg-blue-900/30 p-3 rounded-full mb-4">
-          <ShieldCheck className="h-8 w-8 text-blue-400" />
+      <div className="flex flex-col items-center space-y-6 p-4">
+        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary">
+          <ShieldCheck className="w-6 h-6" />
         </div>
-        <h2 className="text-xl font-bold">Two-Factor Authentication</h2>
-        <p className="text-sm text-gray-400 text-center mt-2">
-          Enter the verification code from your authenticator app to continue
-        </p>
+        
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-semibold">Two-Factor Authentication</h2>
+          <p className="text-sm text-gray-400">
+            Enter the verification code from your authenticator app to continue
+          </p>
+        </div>
+        
+        {/* Development Testing Mode Toggle - only visible in development */}
+        {typeof process !== 'undefined' && 
+         process.env && 
+         process.env.NODE_ENV !== 'production' && (
+          <div className="w-full px-4 py-2 bg-yellow-900/30 border border-yellow-700 rounded-md">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-yellow-300">Testing Mode (Validate Real Codes)</span>
+              <button 
+                onClick={() => setTestMode(!testMode)}
+                className={`px-2 py-1 text-xs rounded ${testMode ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'}`}
+              >
+                {testMode ? 'ON' : 'OFF'}
+              </button>
+            </div>
+            <p className="text-xs text-yellow-200 mt-1">
+              {testMode ? 'Using actual TOTP validation' : 'Bypassing TOTP validation (any code works)'}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
