@@ -123,7 +123,10 @@ export default function SettingsPage() {
                     {isDisabling ? 'Disabling...' : 'Disable Two-Factor Authentication'}
                   </Button>
                 ) : (
-                  <Button onClick={() => setShowSetup(true)}>
+                  <Button 
+                    onClick={() => setShowSetup(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  >
                     Enable Two-Factor Authentication
                   </Button>
                 )}
