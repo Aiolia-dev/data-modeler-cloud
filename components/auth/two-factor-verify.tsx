@@ -208,22 +208,20 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
             // TEMPORARY EMERGENCY BYPASS: For debugging only
             // This allows specific test codes to work while we debug the issue
             // The code is the first 6 digits of the secret
+            // IMPORTANT: In testing mode, we still validate the TOTP code properly
+            // We only log additional information but don't bypass validation
             if (!verified && testMode) {
-              // Get the first 6 characters of the secret and see if they match the token
-              const emergencyCode = secret.substring(0, 6);
-              console.log('EMERGENCY BYPASS: First 6 chars of secret:', emergencyCode);
+              console.log('TESTING MODE: Token validation failed');
+              console.log('TESTING MODE: Expected one of the following tokens:');
               
-              // Also try a few other emergency codes for testing
-              const emergencyCodes = [
-                '123456',  // Simple test code
-                emergencyCode, // First 6 chars of secret
-                token,     // The token itself (to force success for this specific attempt)
-              ];
+              // Log the valid tokens for the current time window
+              totpOptions.forEach(option => {
+                const currentToken = option.totp.generate();
+                console.log(`TESTING MODE: ${option.name} expected token:`, currentToken);
+              });
               
-              if (emergencyCodes.includes(token)) {
-                console.log('EMERGENCY BYPASS: Using emergency code for debugging');
-                verified = true;
-              }
+              // We no longer bypass validation with emergency codes
+              // This ensures only valid TOTP codes are accepted
             }
             
             // In testing mode, log the final result
