@@ -224,6 +224,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const secretBase32 = totpSecret.base32;
       
       console.log('Generated new TOTP secret in base32 format:', secretBase32);
+      console.log('Current time during setup:', new Date().toISOString());
+      
+      // Store the secret parameters for debugging
+      const secretParams = {
+        base32: secretBase32,
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30
+      };
+      console.log('TOTP parameters for setup:', JSON.stringify(secretParams));
       
       // Create the TOTP object using the base32 secret
       const totp = new OTPAuth.TOTP({
@@ -234,6 +244,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         period: 30,
         secret: totpSecret
       });
+      
+      // For debugging, generate the current token
+      const currentToken = totp.generate();
+      console.log('Current token at setup time:', currentToken);
       
       // Generate a QR code URL
       const qrCode = totp.toString();
