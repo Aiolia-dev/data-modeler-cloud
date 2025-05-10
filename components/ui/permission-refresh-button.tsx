@@ -10,12 +10,12 @@ interface PermissionRefreshButtonProps {
 }
 
 export function PermissionRefreshButton({ className }: PermissionRefreshButtonProps) {
-  const { refreshPermissions, loading } = usePermissions();
+  const { fetchPermissions, loading } = usePermissions();
   const [refreshing, setRefreshing] = React.useState(false);
   
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refreshPermissions();
+    await fetchPermissions();
     // Add a small delay to ensure the UI updates
     setTimeout(() => {
       setRefreshing(false);
