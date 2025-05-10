@@ -48,6 +48,59 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
       
       console.log('Verifying 2FA setup with token:', token, 'and secret:', secret ? secret.substring(0, 5) + '...' : 'none');
       
+      // VALIDATION IMPROVEMENT: Before calling the API, verify the token locally
+      // This helps ensure the user has scanned the correct QR code
+      let localVerification = false;
+      
+      try {
+        if (secret) {
+          const OTPAuth = await import('otpauth');
+          
+          // Create a TOTP object using the same approach as in auth-context.tsx
+          const totp = new OTPAuth.TOTP({
+            issuer: 'DataModelerCloud',
+            label: 'setup',
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(secret)
+          });
+          
+          // Check with a wide window to account for time drift
+          const delta = totp.validate({ token, window: 2 });
+          localVerification = delta !== null;
+          
+          console.log('Local verification result:', localVerification ? 'Valid' : 'Invalid');
+          console.log('Expected token:', totp.generate());
+          console.log('User provided token:', token);
+          
+          // If local verification fails, try direct comparison with a wider window
+          if (!localVerification) {
+            console.log('Trying direct token comparison with wider window');
+            
+            // Check a wide range of time windows
+            for (let i = -10; i <= 10; i++) {
+              const timestamp = Math.floor(Date.now() / 1000) + (i * 30);
+              const windowToken = totp.generate({ timestamp: timestamp * 1000 });
+              
+              if (windowToken === token) {
+                console.log(`Direct match found in window ${i} (${i*30} seconds ${i < 0 ? 'behind' : 'ahead'})`);
+                localVerification = true;
+                break;
+              }
+            }
+          }
+        }
+      } catch (localVerifyError) {
+        console.error('Error during local verification:', localVerifyError);
+        // Continue with server verification even if local verification fails
+      }
+      
+      // If local verification failed, warn the user but still try server verification
+      if (!localVerification && secret) {
+        console.warn('Local verification failed - the token may not match the displayed QR code');
+      }
+      
       // Pass both the token and the secret from the setup process
       const verified = await verifyTwoFactor(token, secret);
       
@@ -56,6 +109,16 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
         setSuccess(true);
         // In a real implementation, you would get recovery codes from the backend
         setRecoveryCodes(['ABCDE-12345', 'FGHIJ-67890', 'KLMNO-13579', 'PQRST-24680']);
+        
+        // Store the successful secret in local storage as a backup
+        if (secret) {
+          try {
+            localStorage.setItem('dm_last_successful_totp_secret', secret);
+            console.log('Stored successful TOTP secret in local storage as backup');
+          } catch (storageError) {
+            console.error('Error storing TOTP secret in local storage:', storageError);
+          }
+        }
         
         // Force a refresh of the auth state to ensure the 2FA status is updated
         try {

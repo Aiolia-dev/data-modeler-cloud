@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase.auth]);
   
-  // Setup two-factor authentication
+  // Set up two-factor authentication
   const setupTwoFactor = async () => {
     try {
       if (!user) throw new Error('User not authenticated');
@@ -234,6 +234,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         period: 30
       };
       console.log('TOTP parameters for setup:', JSON.stringify(secretParams));
+      
+      // CRITICAL FIX: Immediately store the secret in user metadata
+      // This ensures the secret is saved before the user scans the QR code
+      console.log('Pre-storing TOTP secret in user metadata to ensure consistency');
+      try {
+        const { error: prestoreError } = await supabase.auth.updateUser({
+          data: {
+            totp_secret: secretBase32,
+            totp_setup_time: new Date().toISOString()
+          }
+        });
+        
+        if (prestoreError) {
+          console.error('Error pre-storing TOTP secret:', prestoreError);
+          // Continue anyway - we'll try again during verification
+        } else {
+          console.log('Successfully pre-stored TOTP secret in user metadata');
+        }
+      } catch (prestoreError) {
+        console.error('Exception pre-storing TOTP secret:', prestoreError);
+        // Continue anyway - we'll try again during verification
+      }
       
       // IMPORTANT: Create the TOTP object using the base32 string directly
       // This ensures consistency between setup and validation
