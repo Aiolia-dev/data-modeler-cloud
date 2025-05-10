@@ -200,7 +200,7 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
           <Button 
             onClick={handleSetup} 
             disabled={isLoading}
-            className="w-full"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isLoading ? 'Setting up...' : 'Set up two-factor authentication'}
           </Button>
@@ -251,7 +251,7 @@ export function TwoFactorSetup({ onComplete }: TwoFactorSetupProps) {
               <Button 
                 onClick={handleVerify} 
                 disabled={isVerifying || token.length !== 6}
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {isVerifying ? 'Verifying...' : 'Verify and Enable'}
               </Button>

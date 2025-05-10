@@ -459,7 +459,7 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
         <Button 
           onClick={handleVerify} 
           disabled={isVerifying || token.length !== 6}
-          className="w-full"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
         >
           {isVerifying ? 'Verifying...' : 'Verify and Continue'}
         </Button>

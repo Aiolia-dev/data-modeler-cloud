@@ -239,7 +239,7 @@ export default function SettingsPage() {
                 ) : (
                   <Button 
                     onClick={() => setShowSetup(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     Enable Two-Factor Authentication
                   </Button>
