@@ -77,6 +77,9 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
               process.env.NODE_ENV !== 'production') {
             console.log('DEVELOPMENT MODE: Bypassing TOTP validation');
             verified = true;
+          } else if (testMode) {
+            console.log('TESTING MODE: Will perform strict TOTP validation');
+            // Don't set verified here - we'll let the actual validation determine it
           }
           
           // If we're in test mode, we'll proceed with actual validation below
@@ -138,11 +141,10 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
             console.log('TOTP validation result:', delta !== null ? 'Valid' : 'Invalid');
             verified = delta !== null;
             
-            // If validation failed but tokens match in our debug output, force success for testing
-            if (!verified && testMode && typeof process !== 'undefined' && 
-                process.env && process.env.NODE_ENV !== 'production') {
-              console.log('TESTING MODE: Forcing success for debugging');
-              verified = true;
+            // In testing mode, we rely solely on the actual TOTP validation
+            // No forcing success - this ensures only valid codes work
+            if (testMode) {
+              console.log('TESTING MODE: Using strict TOTP validation, success =', verified);
             }
           } catch (validationError) {
             console.error('Error during TOTP validation:', validationError);
@@ -159,19 +161,26 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
       }
       
       if (verified) {
+        console.log('2FA verification successful');
         onSuccess();
       } else {
-        // Decrease remaining attempts
-        const newAttempts = attempts - 1;
-        setAttempts(newAttempts);
-        
-        if (newAttempts <= 0) {
-          setError('Too many failed attempts. Please try again later.');
-          setTimeout(() => {
-            onCancel(); // Return to sign-in form after too many failed attempts
-          }, 2000);
+        // In testing mode with strict validation, show a more detailed error
+        if (testMode) {
+          setError('Invalid verification code. Please enter the exact code from your authenticator app.');
+          console.log('TESTING MODE: Validation failed - code does not match TOTP');
         } else {
-          setError(`Invalid verification code. ${newAttempts} attempts remaining.`);
+          // Decrease remaining attempts
+          const newAttempts = attempts - 1;
+          setAttempts(newAttempts);
+          
+          if (newAttempts <= 0) {
+            setError('Too many failed attempts. Please try again later.');
+            setTimeout(() => {
+              onCancel(); // Return to sign-in form after too many failed attempts
+            }, 2000);
+          } else {
+            setError(`Invalid verification code. ${newAttempts} attempts remaining.`);
+          }
         }
       }
     } catch (err) {
