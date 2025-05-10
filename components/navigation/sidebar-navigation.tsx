@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2, Download, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2, Download, Upload, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "@/context/navigation-context";
 import { useProjectRefresh } from "@/context/project-refresh-context";
@@ -583,6 +583,18 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
           <Download size={16} className="mr-2" />
           {!isCollapsed && "Export Model"}
         </button>
+        
+        {/* Settings Link */}
+        <Link
+          href="/protected/settings"
+          className={cn(
+            "flex items-center justify-center w-full py-2 px-3 mt-4 bg-gray-800 hover:bg-gray-700 text-white rounded-md transition-colors",
+            !isCollapsed && "justify-start"
+          )}
+        >
+          <Settings size={16} className="mr-2" />
+          {!isCollapsed && "Security Settings"}
+        </Link>
         
         {/* Admin Dashboard Link - Only visible to superusers */}
         {isSuperuser && (
