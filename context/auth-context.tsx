@@ -253,6 +253,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Generate a QR code URL
       const qrCode = totp.toString();
       
+      // DIAGNOSTIC: Log detailed information about the QR code
+      console.log('DIAGNOSTIC - Full QR code URI:', qrCode);
+      console.log('DIAGNOSTIC - QR code URI components:', qrCode.split('?')[0], qrCode.includes('secret=') ? 'contains secret' : 'missing secret');
+      
+      // Extract the secret from the QR code URI to verify it matches
+      const qrCodeParams = new URLSearchParams(qrCode.split('?')[1]);
+      const secretInQR = qrCodeParams.get('secret');
+      console.log('DIAGNOSTIC - Secret in QR code:', secretInQR);
+      console.log('DIAGNOSTIC - QR secret matches generated secret:', secretInQR === secretBase32);
+      
       console.log('Setting up 2FA for user:', user.email);
       console.log('Secret generated:', secretBase32.substring(0, 5) + '...');
       
@@ -278,6 +288,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Get the secret - either from the setup process or from user metadata
       const secret = setupSecret || user.user_metadata?.totp_secret;
       if (!secret) throw new Error('Two-factor setup not initiated');
+      
+      // DIAGNOSTIC: Log detailed information about the secret being used
+      console.log('DIAGNOSTIC - Secret source:', setupSecret ? 'setup process' : 'user metadata');
+      console.log('DIAGNOSTIC - Raw user metadata:', JSON.stringify(user.user_metadata));
+      console.log('DIAGNOSTIC - Full secret being used:', secret);
+      console.log('DIAGNOSTIC - Secret length:', secret.length);
+      console.log('DIAGNOSTIC - Secret character set:', new Set([...secret]).size, 'unique characters');
       
       console.log('Verifying 2FA token with secret:', secret.substring(0, 5) + '...');
       console.log('User ID for 2FA verification:', user.id);
@@ -336,12 +353,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           attempts++;
           console.log(`Attempt ${attempts} to update user metadata`);
           
+          // DIAGNOSTIC: Log the exact secret before storing
+          console.log('DIAGNOSTIC - About to store TOTP secret in user metadata:', secret);
+          console.log('DIAGNOSTIC - Secret length:', secret.length);
+          console.log('DIAGNOSTIC - Secret character set:', new Set([...secret]).size, 'unique characters');
+          
+          // Update user metadata with the TOTP secret
           const { error: updateError } = await supabase.auth.updateUser({
             data: {
-              two_factor_enabled: true,
-              totp_secret: secret
+              totp_secret: secret,
+              // Add a timestamp to track when this was set
+              totp_setup_time: new Date().toISOString()
             }
           });
+          
+          if (updateError) {
+            console.error('DIAGNOSTIC - Error updating user metadata with TOTP secret:', updateError);
+          } else {
+            console.log('DIAGNOSTIC - Successfully updated user metadata with TOTP secret');
+          }
           
           if (updateError) {
             console.error(`Error updating user metadata (attempt ${attempts}):`, updateError);

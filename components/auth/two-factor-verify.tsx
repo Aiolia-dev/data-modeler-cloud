@@ -370,7 +370,57 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
                     <p className="text-gray-400">Secret: {secret ? `${secret.substring(0, 10)}...` : 'None'}</p>
                     <p className="text-gray-400">User ID: {userId || 'None'}</p>
                     <p className="text-gray-400">Current time: {new Date().toISOString()}</p>
-                    <p className="text-green-400 mt-1">Emergency codes enabled</p>
+                    <p className="text-green-400 mt-1">Diagnostic tools enabled</p>
+                    
+                    {/* Add button to regenerate QR code from current secret */}
+                    <div className="mt-2">
+                      <button
+                        onClick={async () => {
+                          if (!secret) return;
+                          try {
+                            const OTPAuth = await import('otpauth');
+                            const secretObj = OTPAuth.Secret.fromBase32(secret);
+                            const totp = new OTPAuth.TOTP({
+                              issuer: 'DataModelerCloud',
+                              label: userId || 'user',
+                              algorithm: 'SHA1',
+                              digits: 6,
+                              period: 30,
+                              secret: secretObj
+                            });
+                            
+                            // Generate QR code URL
+                            const qrCodeUrl = totp.toString();
+                            console.log('DIAGNOSTIC - Regenerated QR code URL:', qrCodeUrl);
+                            
+                            // Create a QR code image
+                            const qrCodeImg = document.createElement('img');
+                            qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeUrl)}`;
+                            qrCodeImg.alt = 'Regenerated QR Code';
+                            qrCodeImg.className = 'mt-2 mx-auto';
+                            
+                            // Add to the debug container
+                            const container = document.querySelector('.debug-qr-container');
+                            if (container) {
+                              container.innerHTML = '';
+                              container.appendChild(qrCodeImg);
+                              
+                              // Add explanation text
+                              const explanation = document.createElement('p');
+                              explanation.className = 'text-xs text-yellow-300 mt-2';
+                              explanation.textContent = 'Scan this QR code with your authenticator app to verify the secret is correct';
+                              container.appendChild(explanation);
+                            }
+                          } catch (e) {
+                            console.error('Error generating QR code:', e);
+                          }
+                        }}
+                        className="w-full mt-2 px-3 py-2 text-xs bg-blue-700 text-white rounded"
+                      >
+                        Regenerate QR Code from Current Secret
+                      </button>
+                      <div className="debug-qr-container mt-2 text-center"></div>
+                    </div>
                     <div className="mt-2">
                       <p className="text-blue-400">Debug Information:</p>
                       <p className="text-yellow-400 mt-1">To verify your account:</p>
