@@ -16,7 +16,7 @@ type AuthContextType = {
   isTwoFactorVerified: boolean;
   refreshSession: () => Promise<void>;
   setupTwoFactor: () => Promise<{ secret: string; qrCode: string }>;
-  verifyTwoFactor: (token: string) => Promise<boolean>;
+  verifyTwoFactor: (token: string, setupSecret?: string) => Promise<boolean>;
   disableTwoFactor: () => Promise<boolean>;
   validateTwoFactorToken: (token: string) => Promise<boolean>;
 };
@@ -111,10 +111,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const superuserStatus = isSuperuserFlag === true || isSuperuserFlag === "true";
           setIsSuperuser(superuserStatus);
           
-          // Check if 2FA is enabled
-          const twoFactorEnabled = userData.user.user_metadata?.two_factor_enabled === true;
+          // Check if 2FA is enabled - check both user metadata and local storage
+          const metadataEnabled = userData.user.user_metadata?.two_factor_enabled === true;
+          const localStorageEnabled = localStorage.getItem('dm_two_factor_enabled') === 'true';
+          const twoFactorEnabled = metadataEnabled || localStorageEnabled;
+          
+          // If enabled in local storage but not in metadata, sync the metadata
+          if (localStorageEnabled && !metadataEnabled) {
+            console.log('2FA enabled in local storage but not in metadata, syncing...');
+            const localSecret = localStorage.getItem('dm_totp_secret');
+            
+            if (localSecret) {
+              // Update the user metadata with the 2FA status from local storage
+              supabase.auth.updateUser({
+                data: {
+                  two_factor_enabled: true,
+                  totp_secret: localSecret
+                }
+              }).then(({ error }) => {
+                if (error) {
+                  console.error('Error syncing 2FA status to metadata:', error);
+                } else {
+                  console.log('Successfully synced 2FA status to metadata');
+                }
+              });
+            }
+          }
+          
           setIsTwoFactorEnabled(twoFactorEnabled);
           setIsTwoFactorVerified(false); // Always start as not verified
+          
+          console.log('2FA status:', {
+            metadataEnabled,
+            localStorageEnabled,
+            finalStatus: twoFactorEnabled
+          });
           
           console.log('User authenticated:', userData.user.email);
           console.log('Superuser status:', superuserStatus);
@@ -177,12 +208,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Setup two-factor authentication
   const setupTwoFactor = async () => {
     try {
+      if (!user) throw new Error('User not authenticated');
+      
+      // First, try to refresh the session to ensure we have a valid session
+      console.log('Refreshing session before setting up 2FA...');
+      await refreshSession();
+      
       // Generate a new TOTP secret
       const appName = 'DataModelerCloud';
-      const accountName = user?.email || 'user';
+      const accountName = user.email || 'user';
       
       // Create a new TOTP object with a random secret
       const totpSecret = new OTPAuth.Secret();
+      const secretBase32 = totpSecret.base32;
+      
+      // Create the TOTP object
       const totp = new OTPAuth.TOTP({
         issuer: appName,
         label: accountName,
@@ -192,23 +232,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         secret: totpSecret
       });
       
-      // Get the secret in base32 format
-      const secretBase32 = totpSecret.base32;
-      
       // Generate a QR code URL
       const qrCode = totp.toString();
       
-      // Save the secret to the user's metadata
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          totp_secret: secretBase32,
-          two_factor_enabled: false // Not enabled until verified
-        }
-      });
+      console.log('Setting up 2FA for user:', user.email);
+      console.log('Secret generated:', secretBase32.substring(0, 5) + '...');
       
-      if (error) throw error;
+      // Instead of updating user metadata directly, we'll store the secret in local state
+      // and only update the metadata during verification
       
-      return { secret: secretBase32, qrCode };
+      // Return the secret and QR code for the setup process
+      return { 
+        secret: secretBase32, 
+        qrCode 
+      };
     } catch (error) {
       console.error('Error setting up 2FA:', error);
       throw new Error('Failed to setup two-factor authentication');
@@ -216,48 +253,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   // Verify a two-factor token and enable 2FA if valid
-  const verifyTwoFactor = async (token: string) => {
+  const verifyTwoFactor = async (token: string, setupSecret?: string) => {
     try {
       if (!user) throw new Error('User not authenticated');
       
-      // Get the secret from user metadata
-      const secret = user.user_metadata?.totp_secret;
+      // Get the secret - either from the setup process or from user metadata
+      const secret = setupSecret || user.user_metadata?.totp_secret;
       if (!secret) throw new Error('Two-factor setup not initiated');
       
+      console.log('Verifying 2FA token with secret:', secret.substring(0, 5) + '...');
+      
       // Create a TOTP object with the user's secret
-      const totp = new OTPAuth.TOTP({
-        issuer: 'DataModelerCloud',
-        label: user.email || 'user',
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: secret
-      });
+      // Make sure we're using the secret correctly
+      let totp;
+      try {
+        // Try creating the TOTP with the raw secret string
+        totp = new OTPAuth.TOTP({
+          issuer: 'DataModelerCloud',
+          label: user.email || 'user',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          secret: secret
+        });
+      } catch (e) {
+        console.error('Error creating TOTP with string secret:', e);
+        // If that fails, try creating a new Secret object
+        const secretObj = OTPAuth.Secret.fromBase32(secret);
+        totp = new OTPAuth.TOTP({
+          issuer: 'DataModelerCloud',
+          label: user.email || 'user',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          secret: secretObj
+        });
+      }
+      
+      // Log the token being validated
+      console.log('Validating token:', token);
       
       // Verify the token
-      const delta = totp.validate({ token });
+      const delta = totp.validate({ token, window: 1 }); // Allow a window of 1 period before/after
+      console.log('Token validation result:', delta !== null ? 'Valid' : 'Invalid');
       
       if (delta === null) {
         // Invalid token
         return false;
       }
       
-      // Token is valid, enable 2FA for the user
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          two_factor_enabled: true
+      // Token is valid, update both Supabase user metadata and local storage
+      try {
+        // First, try to update Supabase user metadata
+        console.log('Updating Supabase user metadata with 2FA status');
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: {
+            two_factor_enabled: true,
+            totp_secret: secret
+          }
+        });
+        
+        if (updateError) {
+          console.error('Error updating user metadata in Supabase:', updateError);
+          // Continue anyway and use local storage as fallback
+        } else {
+          console.log('Successfully updated user metadata in Supabase');
         }
-      });
-      
-      if (error) throw error;
-      
-      // Update local state
-      setIsTwoFactorEnabled(true);
-      setIsTwoFactorVerified(true);
-      
-      // Generate recovery codes (in a real implementation, store these securely)
-      // For now, we're just returning success
-      return true;
+        
+        // Also store in local storage as a fallback
+        localStorage.setItem('dm_totp_secret', secret);
+        localStorage.setItem('dm_two_factor_enabled', 'true');
+        
+        // Update local state
+        setIsTwoFactorEnabled(true);
+        setIsTwoFactorVerified(true);
+        
+        console.log('Two-factor authentication enabled successfully');
+        
+        // Generate recovery codes (in a real implementation, store these securely)
+        // For now, we're just returning success
+        return true;
+      } catch (error) {
+        console.error('Error enabling 2FA:', error);
+        return false;
+      }
     } catch (error) {
       console.error('Error verifying 2FA token:', error);
       return false;

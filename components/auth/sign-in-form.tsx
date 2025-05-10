@@ -37,14 +37,33 @@ export function SignInForm({ message }: { message?: { type: string; text: string
       
       if (error) throw error;
       
-      // Check if the user has 2FA enabled
-      if (data.user && data.user.user_metadata?.two_factor_enabled === true) {
+      // Log user metadata for debugging
+      console.log('User metadata after sign-in:', data.user?.user_metadata);
+      console.log('2FA enabled in metadata:', data.user?.user_metadata?.two_factor_enabled);
+      
+      // Check both user metadata and local storage for 2FA status
+      // This ensures we catch 2FA even if there are Supabase metadata issues
+      const metadataEnabled = data.user?.user_metadata?.two_factor_enabled === true;
+      const localStorageEnabled = localStorage.getItem('dm_two_factor_enabled') === 'true';
+      
+      if (metadataEnabled || localStorageEnabled) {
+        console.log('2FA is enabled, showing verification screen');
         // Store the user and show 2FA verification
         setUser(data.user);
-        setTwoFactorSecret(data.user.user_metadata?.totp_secret || '');
+        
+        // Get the secret from metadata or local storage
+        const metadataSecret = data.user?.user_metadata?.totp_secret;
+        const localStorageSecret = localStorage.getItem('dm_totp_secret');
+        const secret = metadataSecret || localStorageSecret || '';
+        
+        console.log('Using TOTP secret from:', metadataSecret ? 'metadata' : 'localStorage');
+        
+        setTwoFactorSecret(secret);
         setShowTwoFactor(true);
         setIsLoading(false);
         return;
+      } else {
+        console.log('2FA is not enabled, proceeding with normal sign-in');
       }
       
       // If 2FA is not enabled, proceed with the server action for session handling
