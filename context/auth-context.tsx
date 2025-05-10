@@ -235,14 +235,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       console.log('TOTP parameters for setup:', JSON.stringify(secretParams));
       
-      // Create the TOTP object using the base32 secret
+      // IMPORTANT: Create the TOTP object using the base32 string directly
+      // This ensures consistency between setup and validation
       const totp = new OTPAuth.TOTP({
         issuer: appName,
         label: accountName,
         algorithm: 'SHA1',
         digits: 6,
         period: 30,
-        secret: totpSecret
+        secret: OTPAuth.Secret.fromBase32(secretBase32) // Use fromBase32 for consistency
       });
       
       // For debugging, generate the current token

@@ -90,13 +90,41 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
             // Log the raw secret for debugging
             console.log('Raw secret for validation:', secret);
             
-            // Try different approaches to handle the secret
-            let secretObj;
+            // Use the exact same approach as in the setup process
+            // This ensures consistency between setup and validation
             let totpOptions = [];
             
-            // Approach 1: Use raw secret string
             try {
-              console.log('Approach 1: Using raw secret string');
+              console.log('Primary approach: Using Base32 parsing (same as setup)');
+              // This is the same approach used in setupTwoFactor
+              const secretObjBase32 = OTPAuth.Secret.fromBase32(secret);
+              const primaryTotp = new OTPAuth.TOTP({
+                issuer: 'DataModelerCloud',
+                label: label,
+                algorithm: 'SHA1',
+                digits: 6,
+                period: 30,
+                secret: secretObjBase32
+              });
+              
+              totpOptions.push({
+                name: 'Base32 (primary)',
+                totp: primaryTotp
+              });
+              
+              // Generate and log the current token from this TOTP
+              const primaryToken = primaryTotp.generate();
+              console.log('Primary expected token:', primaryToken);
+              console.log('Primary approach matches user token:', primaryToken === token);
+            } catch (e) {
+              console.error('Error with primary approach:', e);
+            }
+            
+            // Fallback approaches for compatibility
+            
+            // Fallback 1: Use raw secret string
+            try {
+              console.log('Fallback 1: Using raw secret string');
               totpOptions.push({
                 name: 'Raw string',
                 totp: new OTPAuth.TOTP({
@@ -112,28 +140,9 @@ export function TwoFactorVerify({ onSuccess, onCancel, secret, userId }: TwoFact
               console.error('Error using raw secret string:', e);
             }
             
-            // Approach 2: Parse as Base32
+            // Fallback 2: Parse as UTF8
             try {
-              console.log('Approach 2: Parsing as Base32');
-              const secretObjBase32 = OTPAuth.Secret.fromBase32(secret);
-              totpOptions.push({
-                name: 'Base32',
-                totp: new OTPAuth.TOTP({
-                  issuer: 'DataModelerCloud',
-                  label: label,
-                  algorithm: 'SHA1',
-                  digits: 6,
-                  period: 30,
-                  secret: secretObjBase32
-                })
-              });
-            } catch (e) {
-              console.error('Error parsing as Base32:', e);
-            }
-            
-            // Approach 3: Parse as UTF8
-            try {
-              console.log('Approach 3: Parsing as UTF8');
+              console.log('Fallback 2: Parsing as UTF8');
               const secretObjUTF8 = OTPAuth.Secret.fromUTF8(secret);
               totpOptions.push({
                 name: 'UTF8',
