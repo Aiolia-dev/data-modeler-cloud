@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
+import { checkRateLimit, applyRateLimitHeaders, createRateLimitExceededResponse } from "@/utils/rate-limit";
 
 // Security header definitions
 const securityHeaders = {
@@ -24,7 +25,34 @@ const securityHeaders = {
 };
 
 export async function middleware(request: NextRequest) {
-  // First update the session (original middleware functionality)
+  // Check if this is an API request
+  const isApiRequest = request.nextUrl.pathname.startsWith('/api');
+  
+  // Apply rate limiting for API requests
+  if (isApiRequest) {
+    // Check rate limit status
+    const rateLimitInfo = checkRateLimit(request);
+    
+    // If rate limit exceeded, return 429 Too Many Requests
+    if (rateLimitInfo.limited) {
+      return createRateLimitExceededResponse(rateLimitInfo);
+    }
+    
+    // Continue with normal request processing
+    const response = await updateSession(request);
+    
+    // Apply rate limit headers
+    applyRateLimitHeaders(response, rateLimitInfo);
+    
+    // Apply security headers to all responses
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    
+    return response;
+  }
+  
+  // For non-API requests, proceed with normal middleware
   const response = await updateSession(request);
   
   // Apply security headers to all responses
@@ -126,9 +154,11 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - images - .svg, .png, .jpg, .jpeg, .gif, .webp
-     * - api routes
      * Feel free to modify this pattern to include more paths.
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    
+    // Include API routes for rate limiting
+    "/api/(.*)",
   ],
 };
