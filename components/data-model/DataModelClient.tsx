@@ -360,7 +360,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
 
   return (
     <div className="w-full">
-      <div className="w-full mx-auto py-8">
+      <div className="w-full mx-auto pb-8">
         {/* Header with back button and data model name */}
         <div className="flex items-center mb-6">
           <div className="flex items-center gap-2">
