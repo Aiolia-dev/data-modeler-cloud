@@ -17,8 +17,9 @@ import { createAdminClient } from '@/utils/supabase/admin';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { modelId: string } }
+  context: { params: { modelId: string } }
 ) {
+  const { params } = context;
   console.log(`GET /api/models/${params.modelId}/all-data - Fetching all data for model`);
   
   try {
