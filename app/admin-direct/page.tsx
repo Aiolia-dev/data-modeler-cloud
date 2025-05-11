@@ -72,22 +72,22 @@ export default function AdminDashboard() {
       // Projects count is already available from the projects state
       setTotalProjects(projects.length);
 
-      // Fetch data models count using admin client to bypass RLS
+      // Fetch all data models directly
       try {
-        // We need to use the admin client to bypass RLS policies
-        const adminResponse = await fetch('/api/admin/direct-auth');
-        if (adminResponse.ok) {
-          // Now fetch the data models count
-          const modelsCountResponse = await fetch('/api/data-models/count');
-          if (modelsCountResponse.ok) {
-            const modelsData = await modelsCountResponse.json();
-            setTotalDataModels(modelsData.count);
+        // Fetch all data models across all projects
+        const allModelsResponse = await fetch('/api/admin/data-models');
+        if (allModelsResponse.ok) {
+          const allModelsData = await allModelsResponse.json();
+          if (allModelsData && allModelsData.dataModels) {
+            setTotalDataModels(allModelsData.dataModels.length);
           } else {
-            console.error('Failed to fetch data models count');
+            console.error('No data models data returned');
           }
+        } else {
+          console.error('Failed to fetch data models');
         }
       } catch (countError) {
-        console.error('Error fetching data models count:', countError);
+        console.error('Error fetching data models:', countError);
       }
     } catch (error) {
       console.error('Error fetching metrics:', error);
