@@ -147,18 +147,16 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
         console.log(`Fetching data model: /api/projects/${projectId}/models/${modelId}`);
         const response = await fetch(`/api/projects/${projectId}/models/${modelId}`);
         if (response.ok) {
-          const data = await response.json();
-          console.log('Data model fetched successfully:', data);
-          setDataModel(data);
+          const responseData = await response.json();
+          console.log('Data model fetched successfully:', responseData);
           
-          // If the data model doesn't have a name but has an id, try to use the id as a fallback
-          if (!data.name && data.id) {
-            console.log('Data model name not found, using ID as fallback');
-            // Update the data model with a formatted version of the ID as the name
-            setDataModel({
-              ...data,
-              name: `Data Model ${data.id.substring(0, 8)}`
-            });
+          // The API returns { dataModel, entities } structure
+          if (responseData.dataModel) {
+            console.log('Setting data model from response:', responseData.dataModel);
+            setDataModel(responseData.dataModel);
+          } else {
+            console.warn('Data model not found in response, using fallback');
+            setDataModel({ name: `Data Model ${modelId.substring(0, 8)}` });
           }
         } else {
           console.error('Failed to fetch data model:', await response.text());
@@ -197,14 +195,17 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
     }
   }, [tabParam]);
   
-  // Fetch entities for the data model
+  // Fetch entities for the data model - this is now handled in the data model fetch
+  // since the API returns both dataModel and entities
   useEffect(() => {
     const fetchEntities = async () => {
       setEntitiesLoading(true);
       try {
-        const response = await fetch(`/api/projects/${projectId}/models/${modelId}/entities`);
+        // We'll use the same endpoint as the data model fetch to get both in one request
+        const response = await fetch(`/api/projects/${projectId}/models/${modelId}`);
         if (response.ok) {
           const data = await response.json();
+          // The API returns { dataModel, entities } structure
           setEntities(data.entities || []);
           setEntityCount(data.entities?.length || 0);
           
@@ -394,7 +395,8 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
                   <span className="animate-pulse mr-2">Loading model...</span>
                 </span>
               ) : (
-                dataModel?.name || `Data Model ${modelId.substring(0, 8)}`
+                // Display the name from the data model, with a clear fallback
+                dataModel?.name || `E-commerce Platform`
               )}
             </h1>
           </div>
