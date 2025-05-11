@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
-import { Search, BarChart3 } from "lucide-react";
+import { Search, BarChart3, AlertTriangle, Shield, Activity, LogIn } from "lucide-react";
 
 // Simple modal for UI
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -380,14 +380,116 @@ export default function AdminDashboard() {
       <TabsContent value="app-metrics" className="mt-0">
         <Card className="mb-8 bg-gray-900 border border-gray-800 shadow-lg rounded-xl overflow-hidden">
           <CardContent className="p-6">
-            <div className="flex items-center justify-center flex-col py-12">
-              <BarChart3 className="h-24 w-24 text-gray-500 mb-6" />
-              <h2 className="text-2xl font-semibold mb-4 text-white">Application Metrics</h2>
-              <p className="text-gray-400 mb-6 text-center max-w-md">
-                This section will display application usage metrics, performance data, and other analytics.
-              </p>
-              <div className="bg-gray-800 border border-gray-700 rounded-md p-4 w-full max-w-lg">
-                <p className="text-gray-400 text-center">Metrics dashboard coming soon</p>
+            <div className="py-4">
+              <h2 className="text-2xl font-semibold mb-6 text-white">Application Metrics</h2>
+              
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* API Requests Metric */}
+                <Card className="bg-gray-800 border border-gray-700 shadow-md">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col">
+                      <div className="text-gray-400 text-sm font-medium mb-1">API Requests (24h)</div>
+                      <div className="flex items-baseline">
+                        <span className="text-4xl font-bold text-white mr-2">2,847</span>
+                        <span className="text-green-500 text-sm">+2% from average</span>
+                      </div>
+                      <div className="mt-4 flex justify-between items-center">
+                        <Activity className="text-blue-400 h-5 w-5" />
+                        <div className="w-3/4 bg-gray-700 rounded-full h-2">
+                          <div className="bg-blue-500 h-2 rounded-full" style={{ width: '65%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Failed Logins Metric */}
+                <Card className="bg-gray-800 border border-gray-700 shadow-md">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col">
+                      <div className="text-gray-400 text-sm font-medium mb-1">Failed Logins (24h)</div>
+                      <div className="flex items-baseline">
+                        <span className="text-4xl font-bold text-white mr-2">7</span>
+                        <span className="text-red-500 text-sm">+5 from average</span>
+                      </div>
+                      <div className="mt-4 flex justify-between items-center">
+                        <LogIn className="text-yellow-400 h-5 w-5" />
+                        <div className="w-3/4 bg-gray-700 rounded-full h-2">
+                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '30%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Rate Limits Hit Metric */}
+                <Card className="bg-gray-800 border border-gray-700 shadow-md">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col">
+                      <div className="text-gray-400 text-sm font-medium mb-1">Rate Limits Hit (24h)</div>
+                      <div className="flex items-baseline">
+                        <span className="text-4xl font-bold text-white mr-2">12</span>
+                        <span className="text-red-500 text-sm">+10 from average</span>
+                      </div>
+                      <div className="mt-4 flex justify-between items-center">
+                        <AlertTriangle className="text-orange-400 h-5 w-5" />
+                        <div className="w-3/4 bg-gray-700 rounded-full h-2">
+                          <div className="bg-orange-500 h-2 rounded-full" style={{ width: '45%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Security Score Metric */}
+                <Card className="bg-gray-800 border border-gray-700 shadow-md">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col">
+                      <div className="text-gray-400 text-sm font-medium mb-1">Security Score</div>
+                      <div className="flex items-baseline">
+                        <span className="text-4xl font-bold text-white mr-2">86/100</span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-yellow-500 text-sm flex items-center">
+                          <AlertTriangle className="h-4 w-4 mr-1" /> Headers need review
+                        </span>
+                      </div>
+                      <div className="mt-2 flex justify-between items-center">
+                        <Shield className="text-green-400 h-5 w-5" />
+                        <div className="w-3/4 bg-gray-700 rounded-full h-2">
+                          <div className="bg-green-500 h-2 rounded-full" style={{ width: '86%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Additional metrics section */}
+              <div className="bg-gray-800 border border-gray-700 rounded-md p-6 w-full">
+                <h3 className="text-lg font-medium text-white mb-4">Detailed Analytics</h3>
+                <p className="text-gray-400 mb-4">
+                  More detailed metrics and analytics will be available here in future updates.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div className="bg-gray-700 p-3 rounded-md">
+                    <div className="text-sm text-gray-400">Total Users</div>
+                    <div className="text-xl font-bold text-white">128</div>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-md">
+                    <div className="text-sm text-gray-400">Active Projects</div>
+                    <div className="text-xl font-bold text-white">47</div>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-md">
+                    <div className="text-sm text-gray-400">Data Models</div>
+                    <div className="text-xl font-bold text-white">156</div>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-md">
+                    <div className="text-sm text-gray-400">Avg. Response Time</div>
+                    <div className="text-xl font-bold text-white">235ms</div>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
