@@ -2,9 +2,35 @@ import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
 
+// Security header definitions
+const securityHeaders = {
+  // Content-Security-Policy
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';",
+  
+  // Prevent browsers from incorrectly detecting non-scripts as scripts
+  'X-Content-Type-Options': 'nosniff',
+  
+  // Prevent clickjacking
+  'X-Frame-Options': 'DENY',
+  
+  // Force HTTPS connections
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  
+  // Control referrer information
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  
+  // Control browser features and APIs
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+};
+
 export async function middleware(request: NextRequest) {
   // First update the session (original middleware functionality)
   const response = await updateSession(request);
+  
+  // Apply security headers to all responses
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
   
   // Check if the request is for an admin route or project route
   const { pathname } = request.nextUrl;
