@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
@@ -9,14 +9,14 @@ import { createAdminClient } from '@/utils/supabase/admin';
  * This significantly reduces the number of API calls needed when loading a data model page
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { modelId: string } }
+  request: Request,
+  { params }: { params: Promise<{ modelId: string }> }
 ) {
-  console.log(`GET /api/models/${params.modelId}/all-attributes - Fetching all attributes for data model`);
+  const { modelId } = await params;
+  console.log(`GET /api/models/${modelId}/all-attributes - Fetching all attributes for data model`);
   
   try {
-    // Get the model ID from the URL params
-    const modelId = params.modelId;
+    // Model ID is already extracted from params
     
     if (!modelId) {
       console.error('Model ID is required');

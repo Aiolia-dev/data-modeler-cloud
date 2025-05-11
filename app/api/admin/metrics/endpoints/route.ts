@@ -105,8 +105,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ endpoints: result });
     }
 
+    // Define type for the endpoint data item
+    interface EndpointItem {
+      path: string;
+      count: string;
+    }
+    
     // Format the response
-    const endpoints = data.map(item => ({
+    const endpoints = data.map((item: EndpointItem) => ({
       path: item.path,
       count: parseInt(item.count, 10)
     }));

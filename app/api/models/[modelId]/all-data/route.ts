@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 
@@ -16,14 +16,14 @@ import { createAdminClient } from '@/utils/supabase/admin';
  * when loading a data model page
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { modelId: string } }
+  request: Request,
+  { params }: { params: Promise<{ modelId: string }> }
 ) {
-  console.log(`GET /api/models/${params.modelId}/all-data - Fetching all data for model`);
+  const { modelId } = await params;
+  console.log(`GET /api/models/${modelId}/all-data - Fetching all data for model`);
   
   try {
-    // Get the model ID from the URL params
-    const modelId = params.modelId;
+    // Model ID is already extracted from params
     
     if (!modelId) {
       console.error('Model ID is required');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Activity, 
@@ -52,8 +52,13 @@ type Member = {
   superuser?: boolean;
 };
 
-export default function AdminDashboard() {
+// Separate component to handle search params
+function SearchParamsHandler() {
   const searchParams = useSearchParams();
+  return searchParams;
+}
+
+export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -81,13 +86,26 @@ export default function AdminDashboard() {
   const [resetLogSuccess, setResetLogSuccess] = useState<string | null>(null);
   const [resetLogError, setResetLogError] = useState<string | null>(null);
 
-  // State for tabs - initialize from URL parameter if available
-  const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(
-    tabParam === 'projectaccess' || tabParam === 'appmetrics' 
-      ? tabParam 
-      : "projectaccess"
-  );
+  // State for tabs with default value
+  const [activeTab, setActiveTab] = useState("projectaccess");
+  
+  // Effect to initialize tab from URL parameter if available
+  useEffect(() => {
+    // Use a function to safely access search params inside a Suspense boundary
+    const initializeTabFromURL = () => {
+      try {
+        const searchParams = new URL(window.location.href).searchParams;
+        const tabParam = searchParams.get('tab');
+        if (tabParam === 'projectaccess' || tabParam === 'appmetrics') {
+          setActiveTab(tabParam);
+        }
+      } catch (e) {
+        console.error('Error initializing tab from URL:', e);
+      }
+    };
+    
+    initializeTabFromURL();
+  }, []);
 
   // Fetch metrics data for the admin dashboard
   // Reset API request logs
