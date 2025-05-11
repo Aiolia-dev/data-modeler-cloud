@@ -72,14 +72,22 @@ export default function AdminDashboard() {
       // Projects count is already available from the projects state
       setTotalProjects(projects.length);
 
-      // Fetch data models count using the Supabase client
-      const supabase = createClientComponentClient();
-      const { count, error } = await supabase
-        .from('data_models')
-        .select('*', { count: 'exact', head: true });
-
-      if (!error && count !== null) {
-        setTotalDataModels(count);
+      // Fetch data models count using admin client to bypass RLS
+      try {
+        // We need to use the admin client to bypass RLS policies
+        const adminResponse = await fetch('/api/admin/direct-auth');
+        if (adminResponse.ok) {
+          // Now fetch the data models count
+          const modelsCountResponse = await fetch('/api/data-models/count');
+          if (modelsCountResponse.ok) {
+            const modelsData = await modelsCountResponse.json();
+            setTotalDataModels(modelsData.count);
+          } else {
+            console.error('Failed to fetch data models count');
+          }
+        }
+      } catch (countError) {
+        console.error('Error fetching data models count:', countError);
       }
     } catch (error) {
       console.error('Error fetching metrics:', error);
