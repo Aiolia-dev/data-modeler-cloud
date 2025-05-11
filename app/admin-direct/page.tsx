@@ -1,14 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { 
+  Activity, 
+  AlertTriangle, 
+  LogIn, 
+  Shield, 
+  Users, 
+  Database, 
+  FolderKanban,
+  Search, 
+  BarChart3 
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ApiTrafficChart from "@/components/api-traffic-chart";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
-import { Search, BarChart3, AlertTriangle, Shield, Activity, LogIn } from "lucide-react";
 
 // Simple modal for UI
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -42,6 +53,7 @@ type Member = {
 };
 
 export default function AdminDashboard() {
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -57,8 +69,55 @@ export default function AdminDashboard() {
   const [totalProjects, setTotalProjects] = useState<number | null>(null);
   const [totalDataModels, setTotalDataModels] = useState<number | null>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
+  // API metrics state
+  const [apiMetrics, setApiMetrics] = useState<{
+    apiRequests: { count: number; percentChange: number; trend: string };
+    failedLogins: { count: number; percentChange: number; trend: string };
+    rateLimitHits: { count: number; percentChange: number; trend: string };
+    securityScore: { score: number; maxScore: number; issues: string[] };
+  } | null>(null);
+  // Reset logs state
+  const [isResettingLogs, setIsResettingLogs] = useState(false);
+  const [resetLogSuccess, setResetLogSuccess] = useState<string | null>(null);
+  const [resetLogError, setResetLogError] = useState<string | null>(null);
+
+  // State for tabs - initialize from URL parameter if available
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    tabParam === 'projectaccess' || tabParam === 'appmetrics' 
+      ? tabParam 
+      : "projectaccess"
+  );
 
   // Fetch metrics data for the admin dashboard
+  // Reset API request logs
+  const resetApiLogs = async () => {
+    setIsResettingLogs(true);
+    setResetLogSuccess(null);
+    setResetLogError(null);
+    
+    try {
+      const response = await fetch('/api/admin/metrics/reset', {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setResetLogSuccess(data.message || 'API logs reset successfully');
+        // Refresh metrics after reset
+        fetchMetricsData();
+      } else {
+        const errorData = await response.json();
+        setResetLogError(errorData.error || 'Failed to reset API logs');
+      }
+    } catch (error) {
+      console.error('Error resetting API logs:', error);
+      setResetLogError('An unexpected error occurred');
+    } finally {
+      setIsResettingLogs(false);
+    }
+  };
+
   const fetchMetricsData = async () => {
     setLoadingMetrics(true);
     try {
@@ -88,6 +147,19 @@ export default function AdminDashboard() {
         }
       } catch (countError) {
         console.error('Error fetching data models:', countError);
+      }
+      
+      // Fetch API metrics
+      try {
+        const apiMetricsResponse = await fetch('/api/admin/metrics');
+        if (apiMetricsResponse.ok) {
+          const metricsData = await apiMetricsResponse.json();
+          setApiMetrics(metricsData);
+        } else {
+          console.error('Failed to fetch API metrics');
+        }
+      } catch (metricsError) {
+        console.error('Error fetching API metrics:', metricsError);
       }
     } catch (error) {
       console.error('Error fetching metrics:', error);
@@ -274,23 +346,33 @@ export default function AdminDashboard() {
         </Button>
       </div>
       
-      <Tabs defaultValue="project-access" className="w-full">
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(value) => {
+          setActiveTab(value);
+          // Update URL with the tab parameter
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', value);
+          window.history.pushState({}, '', url.toString());
+        }}
+        className="w-full"
+      >
         <TabsList className="bg-gray-800 border border-gray-700 mb-6 p-1 w-full grid grid-cols-2 max-w-md">
           <TabsTrigger 
-            value="project-access" 
-            className="data-[state=active]:bg-gray-700 data-[state=active]:text-white text-gray-300"
+            value="projectaccess" 
+            className="data-[state=active]:bg-gray-700 data-[state=active]:text-white"
           >
             Project Access
           </TabsTrigger>
           <TabsTrigger 
-            value="app-metrics" 
-            className="data-[state=active]:bg-gray-700 data-[state=active]:text-white text-gray-300"
+            value="appmetrics" 
+            className="data-[state=active]:bg-gray-700 data-[state=active]:text-white"
           >
             App Metrics
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="project-access" className="mt-0">
+        <TabsContent value="projectaccess" className="mt-0">
           <Card className="mb-8 bg-gray-900 border border-gray-800 shadow-lg rounded-xl overflow-hidden">
             <CardContent className="p-6">
               <div>
@@ -427,27 +509,65 @@ export default function AdminDashboard() {
       </Card>
       </TabsContent>
       
-      <TabsContent value="app-metrics" className="mt-0">
+      <TabsContent value="appmetrics" className="mt-0">
         <Card className="mb-8 bg-gray-900 border border-gray-800 shadow-lg rounded-xl overflow-hidden">
           <CardContent className="p-6">
             <div className="py-4">
               <h2 className="text-2xl font-semibold mb-6 text-white">Application Metrics</h2>
               
               {/* Metrics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-white">API Metrics</h2>
+                <div>
+                  <Button 
+                    onClick={resetApiLogs} 
+                    disabled={isResettingLogs}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {isResettingLogs ? 'Resetting...' : 'Reset API Logs'}
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Reset Status Messages */}
+              {resetLogSuccess && (
+                <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-2 rounded mb-4">
+                  {resetLogSuccess}
+                </div>
+              )}
+              {resetLogError && (
+                <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-2 rounded mb-4">
+                  {resetLogError}
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {/* API Requests Metric */}
                 <Card className="bg-gray-800 border border-gray-700 shadow-md">
                   <CardContent className="p-6">
                     <div className="flex flex-col">
                       <div className="text-gray-400 text-sm font-medium mb-1">API Requests (24h)</div>
                       <div className="flex items-baseline">
-                        <span className="text-4xl font-bold text-white mr-2">2,847</span>
-                        <span className="text-green-500 text-sm">+2% from average</span>
+                        {loadingMetrics || !apiMetrics ? (
+                          <span className="text-4xl font-bold text-white mr-2">Loading...</span>
+                        ) : (
+                          <>
+                            <span className="text-4xl font-bold text-white mr-2">{apiMetrics.apiRequests.count.toLocaleString()}</span>
+                            <span className={`text-sm ${apiMetrics.apiRequests.percentChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {apiMetrics.apiRequests.percentChange > 0 ? '+' : ''}{apiMetrics.apiRequests.percentChange}% from average
+                            </span>
+                          </>
+                        )}
                       </div>
                       <div className="mt-4 flex justify-between items-center">
                         <Activity className="text-blue-400 h-5 w-5" />
                         <div className="w-3/4 bg-gray-700 rounded-full h-2">
-                          <div className="bg-blue-500 h-2 rounded-full" style={{ width: '65%' }}></div>
+                          {!loadingMetrics && apiMetrics && (
+                            <div 
+                              className="bg-blue-500 h-2 rounded-full" 
+                              style={{ width: `${Math.min(Math.max(apiMetrics.apiRequests.count / 50, 10), 100)}%` }}
+                            ></div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -460,13 +580,26 @@ export default function AdminDashboard() {
                     <div className="flex flex-col">
                       <div className="text-gray-400 text-sm font-medium mb-1">Failed Logins (24h)</div>
                       <div className="flex items-baseline">
-                        <span className="text-4xl font-bold text-white mr-2">7</span>
-                        <span className="text-red-500 text-sm">+5 from average</span>
+                        {loadingMetrics || !apiMetrics ? (
+                          <span className="text-4xl font-bold text-white mr-2">Loading...</span>
+                        ) : (
+                          <>
+                            <span className="text-4xl font-bold text-white mr-2">{apiMetrics.failedLogins.count}</span>
+                            <span className={`text-sm ${apiMetrics.failedLogins.percentChange > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                              {apiMetrics.failedLogins.percentChange > 0 ? '+' : ''}{apiMetrics.failedLogins.percentChange} from average
+                            </span>
+                          </>
+                        )}
                       </div>
                       <div className="mt-4 flex justify-between items-center">
                         <LogIn className="text-yellow-400 h-5 w-5" />
                         <div className="w-3/4 bg-gray-700 rounded-full h-2">
-                          <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '30%' }}></div>
+                          {!loadingMetrics && apiMetrics && (
+                            <div 
+                              className="bg-yellow-500 h-2 rounded-full" 
+                              style={{ width: `${Math.min(Math.max(apiMetrics.failedLogins.count * 5, 10), 100)}%` }}
+                            ></div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -479,13 +612,26 @@ export default function AdminDashboard() {
                     <div className="flex flex-col">
                       <div className="text-gray-400 text-sm font-medium mb-1">Rate Limits Hit (24h)</div>
                       <div className="flex items-baseline">
-                        <span className="text-4xl font-bold text-white mr-2">12</span>
-                        <span className="text-red-500 text-sm">+10 from average</span>
+                        {loadingMetrics || !apiMetrics ? (
+                          <span className="text-4xl font-bold text-white mr-2">Loading...</span>
+                        ) : (
+                          <>
+                            <span className="text-4xl font-bold text-white mr-2">{apiMetrics.rateLimitHits.count}</span>
+                            <span className={`text-sm ${apiMetrics.rateLimitHits.percentChange > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                              {apiMetrics.rateLimitHits.percentChange > 0 ? '+' : ''}{apiMetrics.rateLimitHits.percentChange} from average
+                            </span>
+                          </>
+                        )}
                       </div>
                       <div className="mt-4 flex justify-between items-center">
                         <AlertTriangle className="text-orange-400 h-5 w-5" />
                         <div className="w-3/4 bg-gray-700 rounded-full h-2">
-                          <div className="bg-orange-500 h-2 rounded-full" style={{ width: '45%' }}></div>
+                          {!loadingMetrics && apiMetrics && (
+                            <div 
+                              className="bg-orange-500 h-2 rounded-full" 
+                              style={{ width: `${Math.min(Math.max(apiMetrics.rateLimitHits.count * 3, 10), 100)}%` }}
+                            ></div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -498,17 +644,28 @@ export default function AdminDashboard() {
                     <div className="flex flex-col">
                       <div className="text-gray-400 text-sm font-medium mb-1">Security Score</div>
                       <div className="flex items-baseline">
-                        <span className="text-4xl font-bold text-white mr-2">86/100</span>
+                        {loadingMetrics || !apiMetrics ? (
+                          <span className="text-4xl font-bold text-white mr-2">Loading...</span>
+                        ) : (
+                          <span className="text-4xl font-bold text-white mr-2">{apiMetrics.securityScore.score}/{apiMetrics.securityScore.maxScore}</span>
+                        )}
                       </div>
-                      <div className="mt-2">
-                        <span className="text-yellow-500 text-sm flex items-center">
-                          <AlertTriangle className="h-4 w-4 mr-1" /> Headers need review
-                        </span>
-                      </div>
+                      {!loadingMetrics && apiMetrics && apiMetrics.securityScore.issues.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-yellow-500 text-sm flex items-center">
+                            <AlertTriangle className="h-4 w-4 mr-1" /> {apiMetrics.securityScore.issues[0]}
+                          </span>
+                        </div>
+                      )}
                       <div className="mt-2 flex justify-between items-center">
                         <Shield className="text-green-400 h-5 w-5" />
                         <div className="w-3/4 bg-gray-700 rounded-full h-2">
-                          <div className="bg-green-500 h-2 rounded-full" style={{ width: '86%' }}></div>
+                          {!loadingMetrics && apiMetrics && (
+                            <div 
+                              className="bg-green-500 h-2 rounded-full" 
+                              style={{ width: `${apiMetrics.securityScore.score}%` }}
+                            ></div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -564,6 +721,10 @@ export default function AdminDashboard() {
                     <div className="text-xl font-bold text-white">235ms</div>
                   </div>
                 </div>
+              </div>
+              {/* API Traffic Chart */}
+              <div className="mt-8">
+                <ApiTrafficChart className="w-full" />
               </div>
             </div>
           </CardContent>
