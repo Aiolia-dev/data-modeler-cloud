@@ -52,6 +52,48 @@ export default function AdminDashboard() {
   // Modal state
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<(Project & { members: Member[] }) | null>(null);
+  // Metrics state
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [totalProjects, setTotalProjects] = useState<number | null>(null);
+  const [totalDataModels, setTotalDataModels] = useState<number | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
+
+  // Fetch metrics data for the admin dashboard
+  const fetchMetricsData = async () => {
+    setLoadingMetrics(true);
+    try {
+      // Fetch total users count
+      const usersResponse = await fetch('/api/admin/users/count');
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        setTotalUsers(usersData.users);
+      }
+
+      // Projects count is already available from the projects state
+      setTotalProjects(projects.length);
+
+      // Fetch data models count using the Supabase client
+      const supabase = createClientComponentClient();
+      const { count, error } = await supabase
+        .from('data_models')
+        .select('*', { count: 'exact', head: true });
+
+      if (!error && count !== null) {
+        setTotalDataModels(count);
+      }
+    } catch (error) {
+      console.error('Error fetching metrics:', error);
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
+
+  // Effect to fetch metrics data after projects are loaded
+  useEffect(() => {
+    if (user && projects.length > 0) {
+      fetchMetricsData();
+    }
+  }, [user, projects]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -475,15 +517,39 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                   <div className="bg-gray-700 p-3 rounded-md">
                     <div className="text-sm text-gray-400">Total Users</div>
-                    <div className="text-xl font-bold text-white">128</div>
+                    <div className="text-xl font-bold text-white">
+                      {loadingMetrics ? (
+                        <span className="text-gray-500">Loading...</span>
+                      ) : totalUsers !== null ? (
+                        totalUsers
+                      ) : (
+                        <span className="text-gray-500">--</span>
+                      )}
+                    </div>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-md">
                     <div className="text-sm text-gray-400">Active Projects</div>
-                    <div className="text-xl font-bold text-white">47</div>
+                    <div className="text-xl font-bold text-white">
+                      {loadingMetrics ? (
+                        <span className="text-gray-500">Loading...</span>
+                      ) : totalProjects !== null ? (
+                        totalProjects
+                      ) : (
+                        <span className="text-gray-500">--</span>
+                      )}
+                    </div>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-md">
                     <div className="text-sm text-gray-400">Data Models</div>
-                    <div className="text-xl font-bold text-white">156</div>
+                    <div className="text-xl font-bold text-white">
+                      {loadingMetrics ? (
+                        <span className="text-gray-500">Loading...</span>
+                      ) : totalDataModels !== null ? (
+                        totalDataModels
+                      ) : (
+                        <span className="text-gray-500">--</span>
+                      )}
+                    </div>
                   </div>
                   <div className="bg-gray-700 p-3 rounded-md">
                     <div className="text-sm text-gray-400">Avg. Response Time</div>
