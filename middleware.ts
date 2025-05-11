@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
 import { checkRateLimit, applyRateLimitHeaders, createRateLimitExceededResponse } from "@/utils/rate-limit";
+import { logApiRequest } from "@/utils/api-logger";
 
 // Security header definitions
 const securityHeaders = {
@@ -25,6 +26,9 @@ const securityHeaders = {
 };
 
 export async function middleware(request: NextRequest) {
+  // Track start time for response time calculation
+  const startTime = Date.now();
+  
   // Check if this is an API request
   const isApiRequest = request.nextUrl.pathname.startsWith('/api');
   
@@ -35,11 +39,56 @@ export async function middleware(request: NextRequest) {
     
     // If rate limit exceeded, return 429 Too Many Requests
     if (rateLimitInfo.limited) {
+      // Log the rate-limited API request
+      await logApiRequest({
+        path: request.nextUrl.pathname,
+        method: request.method,
+        statusCode: 429,
+        responseTimeMs: Date.now() - startTime,
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || 
+                  request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown'
+      });
+      
       return createRateLimitExceededResponse(rateLimitInfo);
     }
     
     // Continue with normal request processing
     const response = await updateSession(request);
+    
+    // Get user ID from session if available
+    let userId: string | undefined;
+    try {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name) {
+              return request.cookies.get(name)?.value;
+            },
+            set() {}, // Not needed for this check
+            remove() {}, // Not needed for this check
+          },
+        }
+      );
+      const { data } = await supabase.auth.getSession();
+      userId = data.session?.user?.id;
+    } catch (error) {
+      console.error('Error getting user ID for API logging:', error);
+    }
+    
+    // Log the API request
+    await logApiRequest({
+      userId,
+      path: request.nextUrl.pathname,
+      method: request.method,
+      statusCode: response.status,
+      responseTimeMs: Date.now() - startTime,
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || 
+                request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    });
     
     // Apply rate limit headers
     applyRateLimitHeaders(response, rateLimitInfo);

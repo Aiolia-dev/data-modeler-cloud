@@ -223,14 +223,12 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
         const { data: { user }, error } = await supabase.auth.getUser();
         
         if (error) {
-          // Don't log to console in production to avoid noise
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Error getting user:', error);
-          }
+          console.error('Error getting user:', error);
           return;
         }
         
         if (!user) {
+          console.error('No user found');
           return;
         }
         
@@ -248,20 +246,64 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
     }
     
     checkSuperuser();
-  }, []);
-
-  // Fetch all projects on initial load and when refreshTrigger changes
+  }, []);// Fetch all projects on initial load and when refreshTrigger changes
   useEffect(() => {
     async function fetchProjectsAndDataModels() {
       console.log('Fetching projects and data models, triggered by refreshTrigger:', refreshTrigger);
+      
       try {
+        // Check if we have cached projects and if the cache is still valid (5 minutes)
+        const now = Date.now();
+        const cachedData = typeof window !== 'undefined' ? localStorage.getItem('projectsCache') : null;
+        const cacheTimestamp = typeof window !== 'undefined' ? localStorage.getItem('projectsCacheTimestamp') : null;
+        
+        // Cache is valid if it exists, is not too old, and we're not forcing a refresh
+        const isCacheValid = cachedData && cacheTimestamp && 
+                             (now - parseInt(cacheTimestamp, 10) < 5 * 60 * 1000) && 
+                             refreshTrigger === 0;
+        
+        if (isCacheValid) {
+          // Use cached data
+          console.log('Using cached projects data');
+          const projectsList = JSON.parse(cachedData);
+          setProjects(projectsList);
+          setLoading(false);
+          
+          // Check if we have cached data models
+          const cachedModels = typeof window !== 'undefined' ? localStorage.getItem('dataModelsCache') : null;
+          if (cachedModels) {
+            console.log('Using cached data models');
+            setDataModels(JSON.parse(cachedModels));
+            
+            // Still check for newly created project to expand
+            const newProjectId = typeof window !== 'undefined' ? localStorage.getItem('newProjectId') : null;
+            if (newProjectId) {
+              console.log('Auto-expanding newly created project:', newProjectId);
+              toggleProject(newProjectId);
+              localStorage.removeItem('newProjectId');
+            }
+            
+            return; // Exit early, we have all the data we need
+          }
+        }
+        
+        // If cache is invalid or we need to refresh data models, fetch from API
         const response = await fetch("/api/projects");
         if (response.ok) {
           const data = await response.json();
           const projectsList = data.projects || [];
           console.log('Projects fetched successfully:', projectsList.length);
+          
+          // Update state
           setProjects(projectsList);
           setLoading(false);
+          
+          // Cache the projects data
+          if (typeof window !== 'undefined' && projectsList.length > 0) {
+            localStorage.setItem('projectsCache', JSON.stringify(projectsList));
+            localStorage.setItem('projectsCacheTimestamp', now.toString());
+          }
+          
           // Fetch data models for all projects in parallel
           if (projectsList.length > 0) {
             const loadingState: Record<string, boolean> = {};
@@ -269,9 +311,20 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
               loadingState[project.id] = true;
             });
             setDataModelsLoading(loadingState);
+            
+            // Fetch and cache data models
+            const modelsData: Record<string, DataModel[]> = {};
             await Promise.all(projectsList.map(async (project: Project) => {
-              await fetchDataModels(project.id);
+              const models = await fetchDataModels(project.id);
+              if (models) {
+                modelsData[project.id] = models;
+              }
             }));
+            
+            // Cache the data models
+            if (typeof window !== 'undefined' && Object.keys(modelsData).length > 0) {
+              localStorage.setItem('dataModelsCache', JSON.stringify(modelsData));
+            }
             
             // Check if we need to expand a newly created project
             const newProjectId = typeof window !== 'undefined' ? localStorage.getItem('newProjectId') : null;
@@ -335,19 +388,26 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
   }, [dataModelRefreshTrigger, lastRefreshedProjectId]);
 
   // Fetch data models for a project
-  async function fetchDataModels(projectId: string) {
+  async function fetchDataModels(projectId: string): Promise<DataModel[] | null> {
     setDataModelsLoading(prev => ({ ...prev, [projectId]: true }));
     try {
       const response = await fetch(`/api/projects/${projectId}/models`);
       if (response.ok) {
         const data = await response.json();
+        const models = data.dataModels || [];
+        
+        // Update state with the fetched models
         setDataModels(prev => ({
           ...prev,
-          [projectId]: data.dataModels || []
+          [projectId]: models
         }));
+        
+        return models;
       }
+      return null;
     } catch (error) {
       console.error(`Error fetching data models for project ${projectId}:`, error);
+      return null;
     } finally {
       setDataModelsLoading(prev => ({ ...prev, [projectId]: false }));
     }
