@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, BarChart3 } from "lucide-react";
 
 // Simple modal for UI
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -222,11 +223,29 @@ export default function AdminDashboard() {
           Back to Projects
         </Button>
       </div>
-      <Card className="mb-8 bg-gray-900 border border-gray-800 shadow-lg rounded-xl overflow-hidden">
-        <CardContent className="p-6">
-          <div>
-            <h2 className="text-2xl font-semibold mb-4 text-white">Manage Project Access</h2>
-            <p className="text-gray-400 mb-6">Select a project to manage user access and permissions</p>
+      
+      <Tabs defaultValue="project-access" className="w-full">
+        <TabsList className="bg-gray-800 border border-gray-700 mb-6 p-1 w-full grid grid-cols-2 max-w-md">
+          <TabsTrigger 
+            value="project-access" 
+            className="data-[state=active]:bg-gray-700 data-[state=active]:text-white text-gray-300"
+          >
+            Project Access
+          </TabsTrigger>
+          <TabsTrigger 
+            value="app-metrics" 
+            className="data-[state=active]:bg-gray-700 data-[state=active]:text-white text-gray-300"
+          >
+            App Metrics
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="project-access" className="mt-0">
+          <Card className="mb-8 bg-gray-900 border border-gray-800 shadow-lg rounded-xl overflow-hidden">
+            <CardContent className="p-6">
+              <div>
+                <h2 className="text-2xl font-semibold mb-4 text-white">Manage Project Access</h2>
+                <p className="text-gray-400 mb-6">Select a project to manage user access and permissions</p>
 
             {/* Search input */}
             <div className="relative mb-8">
@@ -356,6 +375,25 @@ export default function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
+      </TabsContent>
+      
+      <TabsContent value="app-metrics" className="mt-0">
+        <Card className="mb-8 bg-gray-900 border border-gray-800 shadow-lg rounded-xl overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center flex-col py-12">
+              <BarChart3 className="h-24 w-24 text-gray-500 mb-6" />
+              <h2 className="text-2xl font-semibold mb-4 text-white">Application Metrics</h2>
+              <p className="text-gray-400 mb-6 text-center max-w-md">
+                This section will display application usage metrics, performance data, and other analytics.
+              </p>
+              <div className="bg-gray-800 border border-gray-700 rounded-md p-4 w-full max-w-lg">
+                <p className="text-gray-400 text-center">Metrics dashboard coming soon</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+      </Tabs>
       
       {/* User information section (simplified) */}
       <div className="mt-8 p-4 bg-gray-900 border border-gray-800 rounded-lg shadow-md flex justify-between items-center user-info">
