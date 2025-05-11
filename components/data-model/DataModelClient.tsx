@@ -144,21 +144,40 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
     const fetchDataModel = async () => {
       setDataModelLoading(true);
       try {
+        console.log(`Fetching data model: /api/projects/${projectId}/models/${modelId}`);
         const response = await fetch(`/api/projects/${projectId}/models/${modelId}`);
         if (response.ok) {
           const data = await response.json();
+          console.log('Data model fetched successfully:', data);
           setDataModel(data);
+          
+          // If the data model doesn't have a name but has an id, try to use the id as a fallback
+          if (!data.name && data.id) {
+            console.log('Data model name not found, using ID as fallback');
+            // Update the data model with a formatted version of the ID as the name
+            setDataModel({
+              ...data,
+              name: `Data Model ${data.id.substring(0, 8)}`
+            });
+          }
         } else {
           console.error('Failed to fetch data model:', await response.text());
+          // Set a fallback name if the API call fails
+          setDataModel({ name: `Data Model ${modelId.substring(0, 8)}` });
         }
       } catch (error) {
         console.error('Error fetching data model:', error);
+        // Set a fallback name if an error occurs
+        setDataModel({ name: `Data Model ${modelId.substring(0, 8)}` });
       } finally {
         setDataModelLoading(false);
       }
     };
     
-    fetchDataModel();
+    // Only fetch if we have valid IDs
+    if (projectId && modelId) {
+      fetchDataModel();
+    }
   }, [projectId, modelId]);
   
   // Handle tab change
@@ -369,7 +388,15 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
                 <ArrowLeft size={16} />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold">{dataModel?.name || 'Loading...'}</h1>
+            <h1 className="text-2xl font-bold">
+              {dataModelLoading ? (
+                <span className="inline-flex items-center">
+                  <span className="animate-pulse mr-2">Loading model...</span>
+                </span>
+              ) : (
+                dataModel?.name || `Data Model ${modelId.substring(0, 8)}`
+              )}
+            </h1>
           </div>
         </div>
 
