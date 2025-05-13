@@ -180,68 +180,62 @@ async function fetchDataModelViaAPI(dataModelId: string): Promise<ExportAttribut
  */
 export async function exportDataModel(dataModelId: string, format: 'csv' | 'excel' | 'json' | 'svg'): Promise<void> {
   try {
-    // Get the data model name for the filename
-    const dataModelResponse = await fetch(`/api/data-models/${dataModelId}`);
-    if (!dataModelResponse.ok) {
-      throw new Error(`Failed to fetch data model: ${dataModelResponse.statusText}`);
+    // Extract the project ID from the URL
+    const urlParts = window.location.pathname.split('/');
+    const projectIdIndex = urlParts.findIndex(part => part === 'projects') + 1;
+    const projectId = urlParts[projectIdIndex];
+    
+    if (!projectId) {
+      throw new Error('Could not determine project ID from URL');
     }
-    const dataModel = await dataModelResponse.json();
     
-    // Fetch all entities for this data model
-    const entitiesResponse = await fetch(`/api/entities?dataModelId=${dataModelId}`);
-    if (!entitiesResponse.ok) {
-      throw new Error(`Failed to fetch entities: ${entitiesResponse.statusText}`);
-    }
-    const entities = await entitiesResponse.json();
+    console.log(`Exporting data model ${dataModelId} from project ${projectId} in format ${format}`);
     
-    // Prepare the data for export
-    const exportData: ExportAttribute[] = [];
+    // Use the new batch export API endpoint
+    const exportResponse = await fetch(`/api/projects/${projectId}/models/${dataModelId}/export?format=${format}`);
     
-    // For each entity, fetch its attributes
-    for (const entity of entities) {
-      const attributesResponse = await fetch(`/api/attributes?entityId=${entity.id}`);
-      if (!attributesResponse.ok) {
-        throw new Error(`Failed to fetch attributes for entity ${entity.name}: ${attributesResponse.statusText}`);
-      }
-      const attributes = await attributesResponse.json();
-      
-      // Add each attribute to the export data
-      for (const attribute of attributes) {
-        let referencedEntity = '';
-        
-        // If this is a foreign key, get the referenced entity
-        if (attribute.isForeignKey && attribute.referencedEntityId) {
-          // Find the referenced entity in our list
-          const referenced = entities.find((e: any) => e.id === attribute.referencedEntityId);
-          if (referenced) {
-            referencedEntity = referenced.name;
-          }
-        }
-        
-        exportData.push({
-          Entity: entity.name,
-          AttributeName: attribute.name,
-          IsStandardAttribute: !attribute.isPrimaryKey && !attribute.isForeignKey,
-          IsForeignKey: attribute.isForeignKey,
-          IsRequired: !attribute.isNullable,
-          IsUnique: attribute.isUnique,
-          DataType: attribute.dataType,
-          ReferencedEntity: referencedEntity
-        });
+    if (!exportResponse.ok) {
+      // Try to get error details if available
+      try {
+        const errorData = await exportResponse.json();
+        throw new Error(errorData.error || `Export failed with status: ${exportResponse.status}`);
+      } catch (parseError) {
+        // If we can't parse the error as JSON, use the status text
+        throw new Error(`Export failed: ${exportResponse.statusText}`);
       }
     }
     
-    // Generate the export file based on the format
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${dataModel.name}_${timestamp}`;
+    // Get the response as a blob
+    const blob = await exportResponse.blob();
     
-    if (format === 'csv') {
-      await createCsvFile(exportData, `${filename}.csv`);
-    } else if (format === 'excel') {
-      await createExcelFile(exportData, `${filename}.xlsx`);
-    } else if (format === 'json') {
-      await createJsonFile(dataModel, entities, `${filename}.json`);
+    // Get filename from Content-Disposition header if available
+    let filename = '';
+    const contentDisposition = exportResponse.headers.get('Content-Disposition');
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/i);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
     }
+    
+    // If no filename in header, generate one
+    if (!filename) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      filename = `data-model-${dataModelId}.${format}`;
+    }
+    
+    // Create a download link
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    
+    console.log(`Successfully exported data model as ${filename}`);
+
   } catch (error) {
     console.error('Error exporting data model:', error);
     throw error;
