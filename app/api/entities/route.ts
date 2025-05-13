@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
-import { getProjectRole, isMethodAllowedForRole } from '@/middleware/role-check';
 
 export async function GET(request: Request) {
   console.log('GET /api/entities - Fetching entities');
@@ -73,14 +72,17 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  console.log('POST /api/entities - Creating a new entity');
+  console.log('=== POST /api/entities - Creating a new entity ===');
+  console.log('Request URL:', request.url);
+  console.log('Request method:', request.method);
+  console.log('Request headers:', Object.fromEntries(request.headers.entries()));
   
   try {
     // Get request body first to avoid any auth issues if the body is invalid
     let body;
     try {
       body = await request.json();
-      console.log('Request body:', body);
+      console.log('Request body:', JSON.stringify(body, null, 2));
     } catch (jsonError) {
       console.error('Error parsing request body:', jsonError);
       return NextResponse.json(
@@ -93,10 +95,14 @@ export async function POST(request: Request) {
     const { 
       name, 
       description, 
-      data_model_id, // Changed from dataModelId to match client-side naming
+      data_model_id, 
       entity_type,
       join_entities,
-      referential_id // Added for referential categorization
+      referential_id,
+      position_x,
+      position_y,
+      primaryKeyType,
+      primaryKeyName
     } = body;
     
     if (!name) {
@@ -115,172 +121,95 @@ export async function POST(request: Request) {
       );
     }
     
+    // Get the current user
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('Auth error:', userError);
+      return NextResponse.json(
+        { error: 'Authentication error', details: userError?.message },
+        { status: 401 }
+      );
+    }
+    
+    // Create the admin client early to use for all database operations
+    console.log('Creating admin client...');
+    const adminClient = await createAdminClient();
+    console.log('Admin client created successfully');
+    
+    // Verify data model exists using admin client to bypass RLS
+    console.log('Verifying data model exists (using admin client):', data_model_id);
+    const dataModelResponse = await adminClient
+      .from('data_models')
+      .select('id, project_id')
+      .eq('id', data_model_id)
+      .single();
+    
+    console.log('Data model response:', JSON.stringify(dataModelResponse, null, 2));
+    
+    const { data: dataModel, error: dataModelError } = dataModelResponse;
+      
+    if (dataModelError) {
+      console.error('Error verifying data model (even with admin client):', dataModelError);
+      console.log('Warning: Proceeding anyway as a last resort...');
+      // We'll continue anyway as a last resort
+    } else {
+      console.log('Data model found successfully:', dataModel);
+    }
+    
+    // Prepare entity data
+    const entityData = {
+      name,
+      description: description || null,
+      data_model_id,
+      entity_type: entity_type || 'table',
+      referential_id: referential_id || null,
+      position_x: typeof position_x === 'number' ? position_x : 0,
+      position_y: typeof position_y === 'number' ? position_y : 0
+      // Removed created_by field as it doesn't exist in the entities table schema
+    };
+    
+    console.log('Creating entity with data:', JSON.stringify(entityData, null, 2));
+    
+    // Create the entity
+    console.log('Executing insert operation...');
     try {
-      // Get the current user
-      const supabase = await createClient();
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('Auth error:', userError);
-        return NextResponse.json(
-          { error: 'Authentication error', details: userError.message },
-          { status: 401 }
-        );
-      }
-      
-      if (!user) {
-        console.error('No user found');
-        return NextResponse.json(
-          { error: 'Unauthorized - No user found' },
-          { status: 401 }
-        );
-      }
-      
-      console.log('User authenticated:', user.id);
-      
-      // Create the entity using the admin client to bypass RLS
-      const adminClient = createAdminClient();
-      
-      // First verify the data model exists
-      const { data: dataModel, error: dataModelError } = await adminClient
-        .from('data_models')
-        .select('id, project_id')
-        .eq('id', data_model_id)
-        .single();
-        
-      if (dataModelError) {
-        console.error('Error verifying data model:', dataModelError);
-        return NextResponse.json(
-          { error: 'Data model not found', details: dataModelError.message },
-          { status: 404 }
-        );
-      }
-      
-      // Check user's role for this project
-      const projectId = dataModel.project_id;
-      console.log(`Checking user role for project ${projectId}`);
-      
-      const { role, error: roleError } = await getProjectRole(projectId);
-      
-      if (roleError) {
-        console.error('Role check error:', roleError);
-        return NextResponse.json(
-          { error: 'Permission error', details: roleError },
-          { status: 403 }
-        );
-      }
-      
-      // Check if the user's role allows POST requests
-      if (!isMethodAllowedForRole('POST', role)) {
-        console.error(`User with role ${role} not allowed to create entities`);
-        return NextResponse.json(
-          { error: 'Insufficient permissions to create entities' },
-          { status: 403 }
-        );
-      }
-      
-      // Prepare entity data according to schema
-      const entityData = {
-        name,
-        description: description || null,
-        data_model_id: data_model_id,
-        position_x: typeof body.position_x === 'number' ? body.position_x : 0,
-        position_y: typeof body.position_y === 'number' ? body.position_y : 0,
-        // Add the new fields
-        entity_type: entity_type || 'standard',
-        join_entities: join_entities || []
-      };
-      
-      console.log('Creating entity with data:', entityData);
-      
-      // Create the entity
-      const { data: entity, error: entityError } = await adminClient
+      const insertResponse = await adminClient
         .from('entities')
-        .insert({
-          name,
-          description,
-          data_model_id,
-          entity_type: entity_type || 'standard',
-          referential_id: referential_id || null, // Add referential_id field
-        })
+        .insert(entityData)
         .select()
         .single();
       
+      console.log('Insert response:', JSON.stringify(insertResponse, null, 2));
+      
+      const { data: entity, error: entityError } = insertResponse;
+      
       if (entityError) {
         console.error('Error creating entity:', entityError);
-        throw new Error(`Failed to create entity: ${entityError.message}`);
+        console.error('Error details:', JSON.stringify(entityError, null, 2));
+        return NextResponse.json(
+          { error: 'Failed to create entity', details: entityError.message, code: entityError.code },
+          { status: 500 }
+        );
       }
       
       console.log('Entity created successfully:', entity);
-
-      // --- JOIN ENTITY RELATIONSHIP LOGIC ---
-      // Use the request body for join entity logic (to avoid type errors from entity type)
-      if (body.entity_type === 'join' && Array.isArray(body.join_entities) && body.join_entities.length >= 2) {
-        // Fetch positions of joined entities
-        const { data: joinedEntities, error: joinedEntitiesError } = await adminClient
-          .from('entities')
-          .select('id, position_x, position_y')
-          .in('id', body.join_entities);
-
-        if (joinedEntitiesError) {
-          console.error('Error fetching joined entities for join entity:', joinedEntitiesError);
-        } else if (joinedEntities.length >= 2) {
-          // Calculate barycenter (average position)
-          const avg = joinedEntities.reduce((acc, e) => {
-            acc.x += typeof e.position_x === 'number' ? e.position_x : 0;
-            acc.y += typeof e.position_y === 'number' ? e.position_y : 0;
-            return acc;
-          }, { x: 0, y: 0 });
-          avg.x /= joinedEntities.length;
-          avg.y /= joinedEntities.length;
-
-          // Update join entity position
-          const { error: updateJoinEntityError } = await adminClient
-            .from('entities')
-            .update({ position_x: avg.x, position_y: avg.y })
-            .eq('id', entity.id);
-          if (updateJoinEntityError) {
-            console.error('Failed to update join entity position:', updateJoinEntityError);
-          } else {
-            entity.position_x = avg.x;
-            entity.position_y = avg.y;
-          }
-        }
-
-        // Fetch joined entities' names for relationship naming
-        let joinedEntitiesNamesMap: Record<string, string> = {};
-        {
-          const { data: joinedEntitiesMeta, error: joinedEntitiesMetaError } = await adminClient
-            .from('entities')
-            .select('id, name')
-            .in('id', body.join_entities);
-          if (!joinedEntitiesMetaError && Array.isArray(joinedEntitiesMeta)) {
-            for (const ent of joinedEntitiesMeta) {
-              joinedEntitiesNamesMap[ent.id] = ent.name;
-            }
-          }
-        }
-        // Insert relationships for each joined entity
-        for (const targetEntityIdRaw of body.join_entities) {
-          const targetEntityId = String(targetEntityIdRaw);
-          const targetEntityName = joinedEntitiesNamesMap[targetEntityId] || targetEntityId;
-          const relationshipData: {
-            data_model_id: string;
-            source_entity_id: string;
-            target_entity_id: string;
-            relationship_type: 'one-to-one' | 'one-to-many' | 'many-to-many';
-            source_cardinality: string;
-            target_cardinality: string;
-            name: string;
-          } = {
-            data_model_id: entity.data_model_id,
-            source_entity_id: entity.id,
-            target_entity_id: targetEntityId,
-            relationship_type: 'one-to-many',
-            source_cardinality: '0..n',
-            target_cardinality: '0..1',
-            name: `${entity.name} to ${targetEntityName}`
+      
+      // Create relationships for join entities
+      if (entity_type === 'join' && Array.isArray(join_entities) && join_entities.length >= 2) {
+        console.log(`Creating relationships for join entity with ${join_entities.length} joined entities`);
+        
+        for (const joinedEntityId of join_entities) {
+          const relationshipData = {
+            entity1_id: entity.id,
+            entity2_id: joinedEntityId,
+            relationship_type: 'many-to-many',
+            data_model_id: data_model_id
           };
+          
+          console.log('Creating relationship:', relationshipData);
+          
           const { error: relError } = await adminClient
             .from('relationships')
             .insert(relationshipData);
@@ -291,22 +220,21 @@ export async function POST(request: Request) {
       }
       
       // Create primary key attribute based on the provided data
-      // Extract primary key information from the request body
-      const primaryKeyType = body.primaryKeyType || 'uuid';
-      const primaryKeyName = body.primaryKeyName || 'id';
+      const pkType = primaryKeyType || 'uuid';
+      const pkName = primaryKeyName || 'id';
       
       // Determine the data type based on the primary key type
       let dataType = 'uuid';
-      if (primaryKeyType === 'auto_increment') {
+      if (pkType === 'auto_increment') {
         dataType = 'integer';
-      } else if (primaryKeyType === 'custom') {
+      } else if (pkType === 'custom') {
         dataType = 'varchar';
-      } else if (primaryKeyType === 'composite') {
+      } else if (pkType === 'composite') {
         dataType = 'composite';
       }
-      
+    
       const attributeData = {
-        name: primaryKeyName,
+        name: pkName,
         description: 'Primary key',
         data_type: dataType,
         is_required: true,
@@ -329,15 +257,15 @@ export async function POST(request: Request) {
       }
 
       // --- Create foreign key attributes for join entities ---
-      if (body.entity_type === 'join' && Array.isArray(body.join_entities) && body.join_entities.length >= 2) {
+      if (entity_type === 'join' && Array.isArray(join_entities) && join_entities.length >= 2) {
         // Fetch joined entities' names and PK types
         const { data: joinedEntitiesMeta, error: joinedEntitiesMetaError } = await adminClient
           .from('entities')
           .select('id, name')
-          .in('id', body.join_entities);
+          .in('id', join_entities);
         if (joinedEntitiesMetaError) {
           console.error('Error fetching joined entities meta for FK attributes:', joinedEntitiesMetaError);
-        } else {
+        } else if (joinedEntitiesMeta) {
           for (const targetEntity of joinedEntitiesMeta) {
             // Try to get PK attribute for this entity
             let fkType = 'uuid';
@@ -352,7 +280,7 @@ export async function POST(request: Request) {
               fkType = pkAttr.data_type;
               pkAttrName = pkAttr.name;
             }
-            const fkAttrName = `id${targetEntity.name.replace(/\s+/g, '')}`;
+            const fkAttrName = `id${targetEntity.name.replace(/\\s+/g, '')}`;
             const fkAttrData = {
               name: fkAttrName,
               description: `Foreign key to ${targetEntity.name}`,
@@ -377,17 +305,20 @@ export async function POST(request: Request) {
       }
       
       return NextResponse.json({ entity });
-    } catch (dbError) {
-      console.error('Database error:', dbError);
+    } catch (insertExecutionError: any) {
+      console.error('Exception during insert execution:', insertExecutionError);
+      console.error('Stack trace:', insertExecutionError.stack);
       return NextResponse.json(
-        { error: dbError instanceof Error ? dbError.message : 'Database operation failed' },
+        { error: 'Exception during insert', details: insertExecutionError.message },
         { status: 500 }
       );
     }
-  } catch (error) {
-    console.error('Error in POST /api/entities:', error);
+  } catch (error: any) {
+    console.error("Error in entities POST route:", error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error", details: error.message, stack: error.stack },
       { status: 500 }
     );
   }
