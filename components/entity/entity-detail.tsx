@@ -1,5 +1,12 @@
 "use client";
 
+// Define the interface for the batch data cache
+declare global {
+  interface Window {
+    batchDataCache?: Record<string, any>;
+  }
+}
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PermissionButton } from "@/components/ui/permission-button";
@@ -220,10 +227,32 @@ const [isEditingDescription, setIsEditingDescription] = useState(false);
     const fetchReferentials = async () => {
       setLoadingReferentials(true);
       try {
+        // First check if we have referentials in the batch data cache
+        if (typeof window !== 'undefined' && window.batchDataCache && 
+            window.batchDataCache[dataModelId] && window.batchDataCache[dataModelId].referentials) {
+          console.log(`Using cached referentials for entity detail: ${window.batchDataCache[dataModelId].referentials.length}`);
+          setAvailableReferentials(window.batchDataCache[dataModelId].referentials);
+          setLoadingReferentials(false);
+          return;
+        }
+        
+        // Otherwise fetch referentials separately
+        console.log(`Fetching referentials separately for entity detail, model ID: ${dataModelId}`);
         const response = await fetch(`/api/referentials?dataModelId=${dataModelId}`);
         if (response.ok) {
           const data = await response.json();
           setAvailableReferentials(data.referentials || []);
+          
+          // Update the cache with the fetched referentials
+          if (typeof window !== 'undefined') {
+            if (!window.batchDataCache) {
+              window.batchDataCache = {};
+            }
+            if (!window.batchDataCache[dataModelId]) {
+              window.batchDataCache[dataModelId] = {};
+            }
+            window.batchDataCache[dataModelId].referentials = data.referentials || [];
+          }
         }
       } catch (err) {
         console.error('Error fetching referentials:', err);

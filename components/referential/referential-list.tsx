@@ -1,5 +1,12 @@
 "use client";
 
+// Define the interface for the batch data cache
+declare global {
+  interface Window {
+    batchDataCache?: Record<string, any>;
+  }
+}
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, ChevronRightIcon } from "lucide-react";
@@ -45,7 +52,42 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
       try {
         setLoading(true);
         
-        // Fetch referentials
+        // First check if we have data in the batch data cache
+        if (typeof window !== 'undefined' && window.batchDataCache && 
+            window.batchDataCache[dataModelId]) {
+          
+          console.log('Using batch data cache for referentials list');
+          
+          // Get referentials from cache if available
+          if (window.batchDataCache[dataModelId].referentials) {
+            const referentialsList = window.batchDataCache[dataModelId].referentials || [];
+            
+            // Get entities from cache if available
+            if (window.batchDataCache[dataModelId].entities) {
+              const entitiesList = window.batchDataCache[dataModelId].entities || [];
+              setEntities(entitiesList);
+              
+              // Count entities per referential and add entityIds
+              const referentialsWithCounts = referentialsList.map((ref: Referential) => {
+                const entitiesInRef = entitiesList.filter((entity: any) => entity.referential_id === ref.id);
+                return {
+                  ...ref,
+                  entity_count: entitiesInRef.length,
+                  entities: entitiesInRef.map((e: any) => ({ id: e.id, name: e.name })),
+                  entityIds: entitiesInRef.map((e: any) => e.id) // Add entityIds array for the modal
+                };
+              });
+              
+              setReferentials(referentialsWithCounts);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        
+        console.log('Fetching referentials and entities separately');
+        
+        // If not in cache, fetch referentials
         const refResponse = await fetch(`/api/referentials?dataModelId=${dataModelId}`);
         if (!refResponse.ok) {
           throw new Error("Failed to fetch referentials");
@@ -76,6 +118,18 @@ export function ReferentialList({ dataModelId, projectId }: ReferentialListProps
         });
         
         setReferentials(referentialsWithCounts);
+        
+        // Update the cache with the fetched data
+        if (typeof window !== 'undefined') {
+          if (!window.batchDataCache) {
+            window.batchDataCache = {};
+          }
+          if (!window.batchDataCache[dataModelId]) {
+            window.batchDataCache[dataModelId] = {};
+          }
+          window.batchDataCache[dataModelId].referentials = referentialsList;
+          window.batchDataCache[dataModelId].entities = entitiesList;
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to load referentials");

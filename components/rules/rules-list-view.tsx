@@ -1,5 +1,12 @@
 "use client";
 
+// Define the interface for the batch data cache
+declare global {
+  interface Window {
+    batchDataCache?: Record<string, any>;
+  }
+}
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,63 +36,180 @@ export function RulesListView({ dataModelId, projectId }: RulesListViewProps) {
       try {
         setLoading(true);
         
-        // Fetch entities first to get their IDs
-        const entitiesResponse = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities`);
-        if (!entitiesResponse.ok) {
-          throw new Error("Failed to fetch entities");
-        }
-        
-        const entitiesData = await entitiesResponse.json();
-        const entities = entitiesData.entities || [];
-        
-        // If no entities, return empty rules
-        if (entities.length === 0) {
-          setRules([]);
-          return;
-        }
-        
-        // Fetch rules for each entity
-        const allRules: Rule[] = [];
-        
-        // Create a map to store attribute names by ID
-        const attributeNamesMap: Record<string, string> = {};
-        
-        for (const entity of entities) {
-          // Fetch attributes for this entity
-          const attributesResponse = await fetch(`/api/attributes?entityId=${entity.id}`);
-          if (attributesResponse.ok) {
-            const responseData = await attributesResponse.json();
-            // Extract the attributes array from the response
-            const attributesArray = responseData.attributes || [];
+        // First check if we have data in the batch data cache
+        if (typeof window !== 'undefined' && window.batchDataCache && 
+            window.batchDataCache[dataModelId]) {
+          
+          console.log('Using batch data cache for rules list');
+          
+          // Get entities, attributes, and rules from cache if available
+          if (window.batchDataCache[dataModelId].entities && 
+              window.batchDataCache[dataModelId].attributes && 
+              window.batchDataCache[dataModelId].rules) {
+                
+            const entities = window.batchDataCache[dataModelId].entities || [];
+            const attributes = window.batchDataCache[dataModelId].attributes || [];
+            const rulesData = window.batchDataCache[dataModelId].rules || [];
             
-            // Create a map of attribute IDs to names
-            attributesArray.forEach((attr: any) => {
+            // If no entities, return empty rules
+            if (entities.length === 0) {
+              setRules([]);
+              setLoading(false);
+              return;
+            }
+            
+            // Create a map to store attribute names by ID
+            const attributeNamesMap: Record<string, string> = {};
+            attributes.forEach((attr: any) => {
               if (attr.id) {
                 attributeNamesMap[attr.id] = attr.name;
               }
             });
-          }
-          
-          // Fetch rules for this entity
-          const rulesResponse = await fetch(`/api/rules?entityId=${entity.id}`);
-          if (rulesResponse.ok) {
-            const rulesData = await rulesResponse.json();
+            
+            // Create a map of entity IDs to names
+            const entityNamesMap: Record<string, string> = {};
+            entities.forEach((entity: any) => {
+              if (entity.id) {
+                entityNamesMap[entity.id] = entity.name;
+              }
+            });
+            
             // Add entity name and attribute name to each rule for display
-            const rulesWithEntity = rulesData.map((rule: Rule) => {
+            const allRules = rulesData.map((rule: Rule) => {
               const attributeName = rule.attribute_id ? attributeNamesMap[rule.attribute_id] || 'Unknown' : null;
+              const entityName = rule.entity_id ? entityNamesMap[rule.entity_id] || 'Unknown' : null;
               return {
                 ...rule,
-                entityName: entity.name,
+                entityName: entityName,
                 attributeName: attributeName
               };
             });
-            allRules.push(...rulesWithEntity);
+            
+            // Process dependencies
+            const processedRules = processDependencies(allRules);
+            setRules(processedRules);
+            setLoading(false);
+            return;
           }
         }
         
-        // Process dependencies
-        const processedRules = processDependencies(allRules);
-        setRules(processedRules);
+        console.log('Fetching rules data using batch endpoint');
+        
+        // If not in cache, use the batch endpoint to get all data in a single call
+        const batchResponse = await fetch(`/api/models/${dataModelId}/all-data`);
+        
+        if (batchResponse.ok) {
+          const batchData = await batchResponse.json();
+          const entities = batchData.entities || [];
+          const attributes = batchData.attributes || [];
+          const rulesData = batchData.rules || [];
+          
+          // If no entities, return empty rules
+          if (entities.length === 0) {
+            setRules([]);
+            return;
+          }
+          
+          // Create a map to store attribute names by ID
+          const attributeNamesMap: Record<string, string> = {};
+          attributes.forEach((attr: any) => {
+            if (attr.id) {
+              attributeNamesMap[attr.id] = attr.name;
+            }
+          });
+          
+          // Create a map of entity IDs to names
+          const entityNamesMap: Record<string, string> = {};
+          entities.forEach((entity: any) => {
+            if (entity.id) {
+              entityNamesMap[entity.id] = entity.name;
+            }
+          });
+          
+          // Add entity name and attribute name to each rule for display
+          const allRules = rulesData.map((rule: Rule) => {
+            const attributeName = rule.attribute_id ? attributeNamesMap[rule.attribute_id] || 'Unknown' : null;
+            const entityName = rule.entity_id ? entityNamesMap[rule.entity_id] || 'Unknown' : null;
+            return {
+              ...rule,
+              entityName: entityName,
+              attributeName: attributeName
+            };
+          });
+          
+          // Process dependencies
+          const processedRules = processDependencies(allRules);
+          setRules(processedRules);
+          
+          // Update the cache with the fetched data
+          if (typeof window !== 'undefined') {
+            if (!window.batchDataCache) {
+              window.batchDataCache = {};
+            }
+            window.batchDataCache[dataModelId] = batchData;
+          }
+        } else {
+          // Fallback to the original method if batch endpoint fails
+          console.log('Batch endpoint failed, falling back to individual API calls');
+          
+          // Fetch entities first to get their IDs
+          const entitiesResponse = await fetch(`/api/projects/${projectId}/models/${dataModelId}/entities`);
+          if (!entitiesResponse.ok) {
+            throw new Error("Failed to fetch entities");
+          }
+          
+          const entitiesData = await entitiesResponse.json();
+          const entities = entitiesData.entities || [];
+          
+          // If no entities, return empty rules
+          if (entities.length === 0) {
+            setRules([]);
+            return;
+          }
+          
+          // Fetch rules for each entity
+          const allRules: Rule[] = [];
+          
+          // Create a map to store attribute names by ID
+          const attributeNamesMap: Record<string, string> = {};
+          
+          for (const entity of entities) {
+            // Fetch attributes for this entity
+            const attributesResponse = await fetch(`/api/attributes?entityId=${entity.id}`);
+            if (attributesResponse.ok) {
+              const responseData = await attributesResponse.json();
+              // Extract the attributes array from the response
+              const attributesArray = responseData.attributes || [];
+              
+              // Create a map of attribute IDs to names
+              attributesArray.forEach((attr: any) => {
+                if (attr.id) {
+                  attributeNamesMap[attr.id] = attr.name;
+                }
+              });
+            }
+            
+            // Fetch rules for this entity
+            const rulesResponse = await fetch(`/api/rules?entityId=${entity.id}`);
+            if (rulesResponse.ok) {
+              const rulesData = await rulesResponse.json();
+              // Add entity name and attribute name to each rule for display
+              const rulesWithEntity = rulesData.map((rule: Rule) => {
+                const attributeName = rule.attribute_id ? attributeNamesMap[rule.attribute_id] || 'Unknown' : null;
+                return {
+                  ...rule,
+                  entityName: entity.name,
+                  attributeName: attributeName
+                };
+              });
+              allRules.push(...rulesWithEntity);
+            }
+          }
+          
+          // Process dependencies
+          const processedRules = processDependencies(allRules);
+          setRules(processedRules);
+        }
       } catch (error) {
         console.error("Error fetching rules:", error);
         setError("Failed to load rules");
