@@ -802,7 +802,18 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `data-model-${selectedModelForExport.id}.${format}`;
+              
+              // Map format to correct file extension
+              const extensionMap = {
+                'csv': 'csv',
+                'excel': 'xlsx',
+                'json': 'json',
+                'svg': 'svg'
+              };
+              
+              const extension = extensionMap[format] || format;
+              a.download = `data-model-${selectedModelForExport.id}.${extension}`;
+              
               document.body.appendChild(a);
               a.click();
               window.URL.revokeObjectURL(url);
