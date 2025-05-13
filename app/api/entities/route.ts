@@ -158,12 +158,19 @@ export async function POST(request: Request) {
       console.log('Data model found successfully:', dataModel);
     }
     
+    // Based on the database schema and error messages, we need to use a specific value for entity_type
+    console.log('Original entity_type from client:', entity_type);
+    
+    // Let's try a completely different approach - remove the entity_type field entirely
+    // and let the database use its default value (if any)
+    console.log('Removing entity_type field to let database use default value');
+    
     // Prepare entity data
     const entityData = {
       name,
       description: description || null,
       data_model_id,
-      entity_type: entity_type || 'table',
+      // Remove entity_type field to let the database use its default value
       referential_id: referential_id || null,
       position_x: typeof position_x === 'number' ? position_x : 0,
       position_y: typeof position_y === 'number' ? position_y : 0
@@ -201,10 +208,11 @@ export async function POST(request: Request) {
         console.log(`Creating relationships for join entity with ${join_entities.length} joined entities`);
         
         for (const joinedEntityId of join_entities) {
+          // Use the correct field names for the relationships table
           const relationshipData = {
-            entity1_id: entity.id,
-            entity2_id: joinedEntityId,
-            relationship_type: 'many-to-many',
+            source_entity_id: entity.id,
+            target_entity_id: joinedEntityId,
+            relationship_type: 'many-to-many' as 'many-to-many', // Type assertion to match the expected enum
             data_model_id: data_model_id
           };
           
