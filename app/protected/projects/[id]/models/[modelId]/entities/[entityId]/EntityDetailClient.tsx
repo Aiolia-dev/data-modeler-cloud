@@ -1,4 +1,12 @@
 "use client";
+
+// Define the interface for the batch data cache
+declare global {
+  interface Window {
+    batchDataCache?: Record<string, any>;
+  }
+}
+
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -89,6 +97,49 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
       setError(null);
       
       try {
+        // First check if we have data in the batch data cache
+        if (typeof window !== 'undefined' && 
+            window.batchDataCache && 
+            window.batchDataCache[modelId]) {
+          
+          const cache = window.batchDataCache[modelId];
+          
+          // Check if we have the entity in the cache
+          if (cache.entityMap && cache.entityMap[entityId]) {
+            console.log('Using cached entity data');
+            setEntity(cache.entityMap[entityId]);
+            
+            // Check if we have attributes for this entity in the cache
+            if (cache.attributesByEntityId && cache.attributesByEntityId[entityId]) {
+              console.log('Using cached attributes data');
+              setAttributes(cache.attributesByEntityId[entityId] || []);
+              
+              // If we have referentials in the cache, use them too
+              if (cache.referentials) {
+                console.log('Using cached referentials data');
+                setReferentials(cache.referentials || []);
+                setReferentialCount(cache.referentials.length || 0);
+              }
+              
+              // Set counts if available
+              if (cache.entities) {
+                setEntityCount(cache.entities.length || 0);
+              }
+              
+              if (cache.rules) {
+                setRuleCount(cache.rules.length || 0);
+              }
+              
+              // We have everything we need from the cache, so we can skip the API calls
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        
+        // If we don't have the data in the cache, fetch it from the API
+        console.log('Cache miss - fetching data from API');
+        
         // Fetch entity data
         const entityRes = await fetch(`/api/entities/${entityId}?dataModelId=${modelId}`);
         
@@ -102,6 +153,41 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
         const attrRes = await fetch(`/api/attributes?entityId=${entityId}`);
         
         if (!attrRes.ok) {
+          // Try to use batch API as fallback
+          console.log('Attributes fetch failed, trying batch API as fallback');
+          const batchRes = await fetch(`/api/models/${modelId}/all-data`);
+          if (batchRes.ok) {
+            const batchData = await batchRes.json();
+            // Store in cache for future use
+            if (typeof window !== 'undefined') {
+              window.batchDataCache = window.batchDataCache || {};
+              window.batchDataCache[modelId] = batchData;
+            }
+            
+            // Extract the attributes for this entity
+            const entityAttributes = batchData.attributesByEntityId?.[entityId] || [];
+            setAttributes(entityAttributes);
+            setEntity(entityData.entity);
+            
+            // Set referentials if available
+            if (batchData.referentials) {
+              setReferentials(batchData.referentials);
+              setReferentialCount(batchData.referentials.length || 0);
+            }
+            
+            // Set counts if available
+            if (batchData.entities) {
+              setEntityCount(batchData.entities.length || 0);
+            }
+            
+            if (batchData.rules) {
+              setRuleCount(batchData.rules.length || 0);
+            }
+            
+            setLoading(false);
+            return;
+          }
+          
           throw new Error('Failed to fetch attributes');
         }
         
@@ -129,6 +215,31 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
           setRuleCount(rulesData?.length || 0);
         }
         
+        // Update the cache with the data we just fetched
+        if (typeof window !== 'undefined') {
+          if (!window.batchDataCache) {
+            window.batchDataCache = {};
+          }
+          if (!window.batchDataCache[modelId]) {
+            window.batchDataCache[modelId] = {};
+          }
+          
+          // Store entity
+          if (!window.batchDataCache[modelId].entityMap) {
+            window.batchDataCache[modelId].entityMap = {};
+          }
+          window.batchDataCache[modelId].entityMap[entityId] = entityData.entity;
+          
+          // Store attributes
+          if (!window.batchDataCache[modelId].attributesByEntityId) {
+            window.batchDataCache[modelId].attributesByEntityId = {};
+          }
+          window.batchDataCache[modelId].attributesByEntityId[entityId] = attrData.attributes || [];
+          
+          // Store referentials
+          window.batchDataCache[modelId].referentials = refData.referentials || [];
+        }
+        
         setEntity(entityData.entity);
         setAttributes(attrData.attributes || []);
         setReferentials(refData.referentials || []);
@@ -142,7 +253,7 @@ export default function EntityDetailClient({ projectId, modelId }: EntityDetailC
     };
     
     fetchData();
-  }, [entityId, modelId]);
+  }, [entityId, modelId, projectId]);
 
   const handleSave = async (entityData: any, attributesData: any) => {
     if (!entity) return;

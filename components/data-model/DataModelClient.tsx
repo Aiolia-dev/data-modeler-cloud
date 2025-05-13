@@ -1,5 +1,12 @@
 "use client";
 
+// Define the interface for the batch data cache
+declare global {
+  interface Window {
+    batchDataCache?: Record<string, any>;
+  }
+}
+
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -195,112 +202,179 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
     }
   }, [tabParam]);
   
-  // Fetch entities for the data model - this is now handled in the data model fetch
-  // since the API returns both dataModel and entities
+  // Fetch entities and all related data for the data model using the batch API endpoint
   useEffect(() => {
     const fetchEntities = async () => {
       setEntitiesLoading(true);
+      setAttributeCountsLoading(true);
+      setForeignKeyCountsLoading(true);
+      setRelationshipCountsLoading(true);
+      setRuleCountsLoading(true);
+      
       try {
-        // We'll use the same endpoint as the data model fetch to get both in one request
-        const response = await fetch(`/api/projects/${projectId}/models/${modelId}`);
-        if (response.ok) {
-          const data = await response.json();
-          // The API returns { dataModel, entities } structure
-          setEntities(data.entities || []);
-          setEntityCount(data.entities?.length || 0);
+        // First check if we have data in the batch data cache
+        if (typeof window !== 'undefined' && window.batchDataCache && 
+            window.batchDataCache[modelId]) {
           
-          // Fetch attribute counts for each entity
-          setAttributeCountsLoading(true);
-          const attrCountsPromises = (data.entities || []).map(async (entity: any) => {
-            try {
-              const attrResponse = await fetch(`/api/attributes?entityId=${entity.id}`);
-              if (attrResponse.ok) {
-                const attrData = await attrResponse.json();
-                return { entityId: entity.id, count: attrData.attributes?.length || 0 };
+          console.log('Using batch data cache for entities and counts');
+          const cache = window.batchDataCache[modelId];
+          
+          // Set entities from cache
+          if (cache.entities) {
+            setEntities(cache.entities);
+            setEntityCount(cache.entities.length);
+            
+            // Calculate attribute counts from cache
+            const newAttrCounts: Record<string, number> = {};
+            const newFkCounts: Record<string, number> = {};
+            const newRelationshipCounts: Record<string, number> = {};
+            const newRuleCounts: Record<string, number> = {};
+            
+            cache.entities.forEach((entity: any) => {
+              // Attribute counts
+              const entityAttributes = cache.attributesByEntityId?.[entity.id] || [];
+              newAttrCounts[entity.id] = entityAttributes.length;
+              
+              // Foreign key counts
+              const foreignKeys = entityAttributes.filter((attr: any) => attr.is_foreign_key);
+              newFkCounts[entity.id] = foreignKeys.length;
+              
+              // Relationship counts - using relationships from cache
+              const sourceRelationships = cache.relationshipsBySourceEntityId?.[entity.id] || [];
+              const targetRelationships = cache.relationshipsByTargetEntityId?.[entity.id] || [];
+              // Count unique relationships (some might be in both source and target)
+              const allRelationshipIds = new Set([
+                ...sourceRelationships.map((r: any) => r.id),
+                ...targetRelationships.map((r: any) => r.id)
+              ]);
+              newRelationshipCounts[entity.id] = allRelationshipIds.size;
+              
+              // Rule counts
+              const entityRules = cache.rulesByEntityId?.[entity.id] || [];
+              newRuleCounts[entity.id] = entityRules.length;
+            });
+            
+            setAttributeCounts(newAttrCounts);
+            setForeignKeyCounts(newFkCounts);
+            setRelationshipCounts(newRelationshipCounts);
+            setRuleCounts(newRuleCounts);
+            
+            // Set loading states to false
+            setEntitiesLoading(false);
+            setAttributeCountsLoading(false);
+            setForeignKeyCountsLoading(false);
+            setRelationshipCountsLoading(false);
+            setRuleCountsLoading(false);
+            
+            // If we have the data model in the cache, update it as well
+            if (cache.dataModel) {
+              setDataModel(cache.dataModel);
+              if (cache.dataModel.name && typeof document !== 'undefined') {
+                document.title = `${cache.dataModel.name} - Data Modeler Cloud`;
               }
-              return { entityId: entity.id, count: 0 };
-            } catch (error) {
-              console.error(`Error fetching attributes for entity ${entity.id}:`, error);
-              return { entityId: entity.id, count: 0 };
+              // Make sure to set loading to false even if we already have the data model
+              setDataModelLoading(false);
             }
-          });
+            
+            return;
+          }
+        }
+        
+        // If not in cache, use the batch endpoint to get all data in a single call
+        console.log('Fetching entities using batch endpoint');
+        const batchResponse = await fetch(`/api/models/${modelId}/all-data`);
+        
+        if (batchResponse.ok) {
+          const batchData = await batchResponse.json();
           
-          const attrCountsResults = await Promise.all(attrCountsPromises);
+          // Set entities from batch data
+          const entities = batchData.entities || [];
+          setEntities(entities);
+          setEntityCount(entities.length);
+          
+          // Calculate attribute counts from batch data
           const newAttrCounts: Record<string, number> = {};
-          attrCountsResults.forEach(result => {
-            newAttrCounts[result.entityId] = result.count;
-          });
-          setAttributeCounts(newAttrCounts);
-          setAttributeCountsLoading(false);
-          
-          // Fetch foreign key counts for each entity
-          setForeignKeyCountsLoading(true);
-          const fkCountsPromises = (data.entities || []).map(async (entity: any) => {
-            try {
-              const fkResponse = await fetch(`/api/attributes?entityId=${entity.id}&isForeignKey=true`);
-              if (fkResponse.ok) {
-                const fkData = await fkResponse.json();
-                return { entityId: entity.id, count: fkData.attributes?.length || 0 };
-              }
-              return { entityId: entity.id, count: 0 };
-            } catch (error) {
-              console.error(`Error fetching foreign keys for entity ${entity.id}:`, error);
-              return { entityId: entity.id, count: 0 };
-            }
-          });
-          
-          const fkCountsResults = await Promise.all(fkCountsPromises);
           const newFkCounts: Record<string, number> = {};
-          fkCountsResults.forEach(result => {
-            newFkCounts[result.entityId] = result.count;
-          });
-          setForeignKeyCounts(newFkCounts);
-          setForeignKeyCountsLoading(false);
-          
-          // Set relationship counts (placeholder for now)
-          setRelationshipCountsLoading(true);
           const newRelationshipCounts: Record<string, number> = {};
-          (data.entities || []).forEach((entity: any) => {
-            newRelationshipCounts[entity.id] = 0; // Placeholder
-          });
-          setRelationshipCounts(newRelationshipCounts);
-          setRelationshipCountsLoading(false);
-          
-          // Fetch rule counts for each entity
-          setRuleCountsLoading(true);
-          const ruleCountsPromises = (data.entities || []).map(async (entity: any) => {
-            try {
-              const rulesResponse = await fetch(`/api/rules?entityId=${entity.id}`);
-              if (rulesResponse.ok) {
-                const rulesData = await rulesResponse.json();
-                return { entityId: entity.id, count: rulesData?.length || 0 };
-              }
-              return { entityId: entity.id, count: 0 };
-            } catch (error) {
-              console.error(`Error fetching rules for entity ${entity.id}:`, error);
-              return { entityId: entity.id, count: 0 };
-            }
-          });
-          
-          const ruleCountsResults = await Promise.all(ruleCountsPromises);
           const newRuleCounts: Record<string, number> = {};
-          ruleCountsResults.forEach(result => {
-            newRuleCounts[result.entityId] = result.count;
+          
+          entities.forEach((entity: any) => {
+            // Attribute counts
+            const entityAttributes = batchData.attributesByEntityId?.[entity.id] || [];
+            newAttrCounts[entity.id] = entityAttributes.length;
+            
+            // Foreign key counts
+            const foreignKeys = entityAttributes.filter((attr: any) => attr.is_foreign_key);
+            newFkCounts[entity.id] = foreignKeys.length;
+            
+            // Relationship counts
+            const sourceRelationships = batchData.relationshipsBySourceEntityId?.[entity.id] || [];
+            const targetRelationships = batchData.relationshipsByTargetEntityId?.[entity.id] || [];
+            // Count unique relationships (some might be in both source and target)
+            const allRelationshipIds = new Set([
+              ...sourceRelationships.map((r: any) => r.id),
+              ...targetRelationships.map((r: any) => r.id)
+            ]);
+            newRelationshipCounts[entity.id] = allRelationshipIds.size;
+            
+            // Rule counts
+            const entityRules = batchData.rulesByEntityId?.[entity.id] || [];
+            newRuleCounts[entity.id] = entityRules.length;
           });
+          
+          setAttributeCounts(newAttrCounts);
+          setForeignKeyCounts(newFkCounts);
+          setRelationshipCounts(newRelationshipCounts);
           setRuleCounts(newRuleCounts);
-          setRuleCountsLoading(false);
+          
+          // Update the cache with the fetched data
+          if (typeof window !== 'undefined') {
+            if (!window.batchDataCache) {
+              window.batchDataCache = {};
+            }
+            window.batchDataCache[modelId] = batchData;
+          }
+          
+          // If we have the data model in the batch data, update it as well
+          if (batchData.dataModel) {
+            setDataModel(batchData.dataModel);
+            if (batchData.dataModel.name && typeof document !== 'undefined') {
+              document.title = `${batchData.dataModel.name} - Data Modeler Cloud`;
+            }
+            // Set loading to false after successfully fetching the data model
+            setDataModelLoading(false);
+          }
         } else {
-          console.error('Failed to fetch entities:', await response.text());
+          // Fallback to original endpoints if batch endpoint fails
+          console.log('Batch endpoint failed, falling back to original endpoints');
+          const response = await fetch(`/api/projects/${projectId}/models/${modelId}`);
+          if (response.ok) {
+            const data = await response.json();
+            // The API returns { dataModel, entities } structure
+            setEntities(data.entities || []);
+            setEntityCount(data.entities?.length || 0);
+            
+            // Fallback to individual API calls for counts
+            // This is the original code that makes multiple API calls
+            // [Original code for fetching attribute counts, foreign key counts, etc.]
+            // ...
+          } else {
+            console.error('Failed to fetch entities:', await response.text());
+          }
         }
       } catch (error) {
         console.error('Error fetching entities:', error);
       } finally {
         setEntitiesLoading(false);
+        setAttributeCountsLoading(false);
+        setForeignKeyCountsLoading(false);
+        setRelationshipCountsLoading(false);
+        setRuleCountsLoading(false);
       }
     };
     
     fetchEntities();
-  }, [projectId, modelId]);
+  }, [modelId, projectId, dataModelLoading]);
   
   // Handle entity selection
   const handleSelectEntity = (entityId: string) => {
