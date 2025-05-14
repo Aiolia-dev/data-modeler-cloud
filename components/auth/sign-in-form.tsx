@@ -41,13 +41,16 @@ export function SignInForm({ message }: { message?: { type: string; text: string
       console.log('User metadata after sign-in:', data.user?.user_metadata);
       console.log('2FA enabled in metadata:', data.user?.user_metadata?.two_factor_enabled);
       
-      // Check if 2FA is enabled for THIS specific user by checking both metadata and user-specific localStorage
+      // Check if 2FA is enabled for THIS specific user by checking Supabase user metadata first, then local storage as fallback
       const metadataEnabled = data.user?.user_metadata?.two_factor_enabled === true;
       const localStorageEnabled = localStorage.getItem(`dm_two_factor_enabled_${data.user?.id}`) === 'true';
+      // Prioritize metadata over local storage
+      const twoFactorEnabled = metadataEnabled || localStorageEnabled;
       
       console.log(`User ${data.user?.id} 2FA status:`, {
         metadataEnabled,
         localStorageEnabled,
+        twoFactorEnabled,
         userMetadata: data.user?.user_metadata
       });
       
@@ -85,10 +88,11 @@ export function SignInForm({ message }: { message?: { type: string; text: string
         // Store the user and show 2FA verification
         setUser(data.user);
         
-        // Get the secret from metadata or local storage
+        // Get the secret from metadata or user-specific local storage
         const metadataSecret = data.user?.user_metadata?.totp_secret;
-        const localStorageSecret = localStorage.getItem('dm_totp_secret');
-        const secret = metadataSecret || localStorageSecret || '';
+        const userSpecificSecret = localStorage.getItem(`dm_totp_secret_${data.user?.id}`);
+        const fallbackSecret = localStorage.getItem('dm_totp_secret'); // Legacy fallback
+        const secret = metadataSecret || userSpecificSecret || fallbackSecret || '';
         
         console.log('Using TOTP secret from:', metadataSecret ? 'metadata' : 'localStorage');
         

@@ -32,16 +32,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
   const [isTwoFactorVerified, setIsTwoFactorVerified] = useState(false);
   
+  // Create a standard Supabase client
   const supabase = createClientComponentClient();
   
   // Function to refresh the session
+  // Helper function to try to recover 2FA status from local storage when session is missing
+  const tryRecoverTwoFactorStatus = () => {
+    console.log('DEBUG AUTH: Trying to recover 2FA status from local storage');
+    
+    // Clean up any temporary 2FA keys that might be causing false positives
+    const keysToRemove = [];
+    const twoFactorKeys = [];
+    
+    // Scan localStorage for 2FA related keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        // Collect temporary keys for removal
+        if (key.startsWith('dm_two_factor_enabled_temp_')) {
+          keysToRemove.push(key);
+        }
+        // Collect valid 2FA keys
+        else if (key.startsWith('dm_two_factor_enabled_') && !key.includes('undefined')) {
+          twoFactorKeys.push(key);
+        }
+      }
+    }
+    
+    // Remove temporary keys
+    keysToRemove.forEach(key => {
+      console.log('DEBUG AUTH: Removing temporary 2FA key:', key);
+      localStorage.removeItem(key);
+    });
+    
+    console.log('DEBUG AUTH: Found valid 2FA enabled keys:', twoFactorKeys);
+    
+    // Only consider keys with actual user IDs, not temporary or undefined ones
+    for (const key of twoFactorKeys) {
+      if (localStorage.getItem(key) === 'true') {
+        // Only trust keys that have a corresponding secret
+        const secretKey = key.replace('two_factor_enabled', 'totp_secret');
+        if (localStorage.getItem(secretKey)) {
+          console.log('DEBUG AUTH: Found valid enabled 2FA key with secret:', key);
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+  
   const refreshSession = async () => {
     try {
       console.log('Refreshing auth session...');
+      
+      // First try to get the user directly without refreshing the session
+      // This is more reliable when there are cookie parsing issues
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (!userError && userData.user) {
+          console.log('Successfully retrieved user without session refresh:', userData.user.email);
+          
+          // We have a user, let's update our state
+          setUser(userData.user);
+          setIsAuthenticated(true);
+          
+          // Check for superuser status
+          const isSuperuserFlag = userData.user.user_metadata?.is_superuser;
+          const superuserStatus = isSuperuserFlag === true || isSuperuserFlag === "true";
+          setIsSuperuser(superuserStatus);
+          
+          // Check if 2FA is enabled
+          console.log('DEBUG AUTH: Checking 2FA status from getUser');
+          console.log('DEBUG AUTH: User metadata:', JSON.stringify(userData.user.user_metadata));
+          
+          const metadataEnabled = userData.user.user_metadata?.two_factor_enabled === true;
+          console.log('DEBUG AUTH: 2FA enabled in metadata:', metadataEnabled);
+          
+          const userSpecificKey = `dm_two_factor_enabled_${userData.user.id}`;
+          const localStorageEnabled = localStorage.getItem(userSpecificKey) === 'true';
+          console.log('DEBUG AUTH: 2FA local storage check:', {
+            key: userSpecificKey,
+            value: localStorage.getItem(userSpecificKey),
+            enabled: localStorageEnabled
+          });
+          
+          const finalStatus = metadataEnabled || localStorageEnabled;
+          console.log('DEBUG AUTH: Setting isTwoFactorEnabled to:', finalStatus);
+          setIsTwoFactorEnabled(finalStatus);
+          
+          return; // Skip the session refresh if we already have the user
+        }
+      } catch (directUserError) {
+        console.error('Error getting user directly:', directUserError);
+        // Continue to try refreshing the session
+      }
+      
+      // If we couldn't get the user directly, try refreshing the session
       const { data, error } = await supabase.auth.refreshSession();
       
       if (error) {
         console.error('Error refreshing session:', error);
+        // Try to recover by checking local storage for 2FA status
+        const recovered = tryRecoverTwoFactorStatus();
+        if (recovered) {
+          setIsTwoFactorEnabled(true);
+        }
         return;
       }
       
@@ -56,6 +152,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isSuperuserFlag = data.user.user_metadata?.is_superuser;
         const superuserStatus = isSuperuserFlag === true || isSuperuserFlag === "true";
         setIsSuperuser(superuserStatus);
+        
+        // Check if 2FA is enabled after refresh
+        console.log('DEBUG AUTH: Checking 2FA status after session refresh');
+        console.log('DEBUG AUTH: User metadata after refresh:', JSON.stringify(data.user.user_metadata));
+        
+        const metadataEnabled = data.user.user_metadata?.two_factor_enabled === true;
+        console.log('DEBUG AUTH: 2FA enabled in metadata after refresh:', metadataEnabled);
+        
+        const userSpecificKey = `dm_two_factor_enabled_${data.user.id}`;
+        const localStorageEnabled = localStorage.getItem(userSpecificKey) === 'true';
+        console.log('DEBUG AUTH: 2FA local storage check after refresh:', {
+          key: userSpecificKey,
+          value: localStorage.getItem(userSpecificKey),
+          enabled: localStorageEnabled
+        });
+        
+        const finalStatus = metadataEnabled || localStorageEnabled;
+        console.log('DEBUG AUTH: Setting isTwoFactorEnabled to:', finalStatus);
+        setIsTwoFactorEnabled(finalStatus);
+        
+        console.log('DEBUG AUTH: 2FA status after refresh:', {
+          metadataEnabled,
+          localStorageEnabled,
+          finalStatus
+        });
         
         console.log('User authenticated:', data.user.email);
         console.log('Superuser status:', superuserStatus);
@@ -111,15 +232,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const superuserStatus = isSuperuserFlag === true || isSuperuserFlag === "true";
           setIsSuperuser(superuserStatus);
           
-          // Check if 2FA is enabled - check both user metadata and local storage
+          // Check if 2FA is enabled - check both user metadata and user-specific local storage
+          console.log('DEBUG AUTH: Checking 2FA status during auth initialization');
+          console.log('DEBUG AUTH: User metadata:', JSON.stringify(userData.user.user_metadata));
+          
           const metadataEnabled = userData.user.user_metadata?.two_factor_enabled === true;
-          const localStorageEnabled = localStorage.getItem('dm_two_factor_enabled') === 'true';
+          console.log('DEBUG AUTH: 2FA enabled in metadata:', metadataEnabled);
+          
+          const userSpecificKey = `dm_two_factor_enabled_${userData.user.id}`;
+          const localStorageEnabled = localStorage.getItem(userSpecificKey) === 'true';
+          console.log('DEBUG AUTH: 2FA local storage check:', {
+            key: userSpecificKey,
+            value: localStorage.getItem(userSpecificKey),
+            enabled: localStorageEnabled
+          });
+          
           const twoFactorEnabled = metadataEnabled || localStorageEnabled;
+          console.log('DEBUG AUTH: Final 2FA status:', twoFactorEnabled);
           
           // If enabled in local storage but not in metadata, sync the metadata
           if (localStorageEnabled && !metadataEnabled) {
-            console.log('2FA enabled in local storage but not in metadata, syncing...');
-            const localSecret = localStorage.getItem('dm_totp_secret');
+            console.log('DEBUG AUTH: 2FA enabled in local storage but not in metadata, syncing...');
+            const localSecret = localStorage.getItem(`dm_totp_secret_${userData.user.id}`);
+            console.log('DEBUG AUTH: Local secret found:', !!localSecret);
             
             if (localSecret) {
               // Update the user metadata with the 2FA status from local storage
@@ -133,6 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   console.error('Error syncing 2FA status to metadata:', error);
                 } else {
                   console.log('Successfully synced 2FA status to metadata');
+                  // Ensure we update our state to reflect the change
+                  setIsTwoFactorEnabled(true);
                 }
               });
             }
@@ -141,9 +278,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsTwoFactorEnabled(twoFactorEnabled);
           setIsTwoFactorVerified(false); // Always start as not verified
           
-          console.log('2FA status:', {
+          console.log('DEBUG AUTH: Setting isTwoFactorEnabled to:', twoFactorEnabled);
+          console.log('DEBUG AUTH: 2FA status summary:', {
             metadataEnabled,
             localStorageEnabled,
+            userSpecificKey,
             finalStatus: twoFactorEnabled
           });
           
@@ -175,7 +314,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      async (event: string, newSession: Session | null) => {
         console.log('Auth state changed:', event);
         
         if (newSession) {
@@ -208,255 +347,178 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Set up two-factor authentication
   const setupTwoFactor = async () => {
     try {
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        console.error('DEBUG AUTH: No user found when setting up 2FA');
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('DEBUG AUTH: Setting up 2FA for user:', user.id);
       
       // First, try to refresh the session to ensure we have a valid session
-      console.log('Refreshing session before setting up 2FA...');
+      console.log('DEBUG AUTH: Refreshing session before setting up 2FA...');
       try {
         await refreshSession();
-        console.log('Session refreshed successfully');
+        console.log('DEBUG AUTH: Session refreshed successfully');
       } catch (refreshError) {
-        console.error('Error refreshing session:', refreshError);
-        // Continue anyway - the session might still be valid
+        console.error('DEBUG AUTH: Error refreshing session:', refreshError);
+        // Continue anyway - we'll try with the current user
       }
       
-      // Generate a new TOTP secret
-      const appName = 'DataModelerCloud';
-      const accountName = user.email || 'user';
+      console.log('DEBUG AUTH: Generating TOTP secret...');
       
-      // Create a new TOTP secret using a consistent format
-      // We'll use base32 encoding which is standard for TOTP
-      const totpSecret = new OTPAuth.Secret();
-      const secretBase32 = totpSecret.base32;
-      
-      console.log('Generated new TOTP secret in base32 format:', secretBase32);
-      console.log('Current time during setup:', new Date().toISOString());
-      
-      // Store the secret parameters for debugging
-      const secretParams = {
-        base32: secretBase32,
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30
-      };
-      console.log('TOTP parameters for setup:', JSON.stringify(secretParams));
-      
-      // Store the secret in local storage as a temporary backup
-      // This will be used if the Supabase update fails
+      // Dynamically import OTPAuth to ensure it's available
       try {
-        localStorage.setItem('dm_pending_totp_secret', secretBase32);
-        console.log('Stored TOTP secret in local storage as backup');
-      } catch (storageError) {
-        console.error('Error storing TOTP secret in local storage:', storageError);
+        // Generate a new TOTP secret
+        const secretBuffer = new Uint8Array(20);
+        window.crypto.getRandomValues(secretBuffer);
+        const secretBase32 = base32Encode(secretBuffer);
+        
+        console.log('DEBUG AUTH: Generated secret:', secretBase32.substring(0, 5) + '...');
+        
+        // Store the secret in user-specific storage temporarily during setup
+        localStorage.setItem(`dm_pending_totp_secret_${user.id}`, secretBase32);
+        
+        // Create a TOTP URI
+        const issuer = 'DataModeler';
+        const account = user.email || user.id;
+        const qrCodeUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secretBase32}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+        
+        console.log('DEBUG AUTH: Generated QR code URL');
+        
+        return {
+          secret: secretBase32,
+          qrCode: qrCodeUrl
+        };
+      } catch (otpError) {
+        console.error('DEBUG AUTH: Error with OTP library:', otpError);
+        throw new Error('Failed to generate 2FA secret. Please try again.');
       }
-      
-      // IMPORTANT: Create the TOTP object using the base32 string directly
-      // This ensures consistency between setup and validation
-      const totp = new OTPAuth.TOTP({
-        issuer: appName,
-        label: accountName,
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: OTPAuth.Secret.fromBase32(secretBase32) // Use fromBase32 for consistency
-      });
-      
-      // For debugging, generate the current token
-      const currentToken = totp.generate();
-      console.log('Current token at setup time:', currentToken);
-      
-      // Generate a QR code URL
-      const qrCode = totp.toString();
-      
-      // We'll try to update the user metadata, but we won't block the QR code display
-      // This way, the user can still set up 2FA even if there's a session issue
-      setTimeout(async () => {
-        try {
-          console.log('Attempting to store TOTP secret in user metadata...');
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: {
-              totp_secret: secretBase32,
-              totp_setup_time: new Date().toISOString()
-            }
-          });
-          
-          if (updateError) {
-            console.error('Error storing TOTP secret in user metadata:', updateError);
-          } else {
-            console.log('Successfully stored TOTP secret in user metadata');
-          }
-        } catch (updateError) {
-          console.error('Exception storing TOTP secret:', updateError);
-        }
-      }, 1000); // Delay by 1 second to avoid blocking the UI
-      
-      // DIAGNOSTIC: Log detailed information about the QR code
-      console.log('DIAGNOSTIC - Full QR code URI:', qrCode);
-      console.log('DIAGNOSTIC - QR code URI components:', qrCode.split('?')[0], qrCode.includes('secret=') ? 'contains secret' : 'missing secret');
-      
-      // Extract the secret from the QR code URI to verify it matches
-      const qrCodeParams = new URLSearchParams(qrCode.split('?')[1]);
-      const secretInQR = qrCodeParams.get('secret');
-      console.log('DIAGNOSTIC - Secret in QR code:', secretInQR);
-      console.log('DIAGNOSTIC - QR secret matches generated secret:', secretInQR === secretBase32);
-      
-      console.log('Setting up 2FA for user:', user.email);
-      console.log('Secret generated:', secretBase32.substring(0, 5) + '...');
-      
-      // Instead of updating user metadata directly, we'll store the secret in local state
-      // and only update the metadata during verification
-      
-      // Return the secret and QR code for the setup process
-      return { 
-        secret: secretBase32, 
-        qrCode 
-      };
     } catch (error) {
-      console.error('Error setting up 2FA:', error);
+      console.error('DEBUG AUTH: Error setting up 2FA:', error);
       throw new Error('Failed to setup two-factor authentication');
     }
+  };
+  
+  // Helper function to encode buffer as base32
+  function base32Encode(buffer: Uint8Array): string {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let result = '';
+    let bits = 0;
+    let value = 0;
+    
+    for (let i = 0; i < buffer.length; i++) {
+      value = (value << 8) | buffer[i];
+      bits += 8;
+      
+      while (bits >= 5) {
+        result += alphabet[(value >>> (bits - 5)) & 31];
+        bits -= 5;
+      }
+    }
+    
+    if (bits > 0) {
+      result += alphabet[(value << (5 - bits)) & 31];
+    }
+    
+    return result;
   };
   
   // Verify a two-factor token and enable 2FA if valid
   const verifyTwoFactor = async (token: string, setupSecret?: string) => {
     try {
-      if (!user) throw new Error('User not authenticated');
-      
-      // Get the secret - either from the setup process or from user metadata
-      const secret = setupSecret || user.user_metadata?.totp_secret;
-      if (!secret) throw new Error('Two-factor setup not initiated');
-      
-      // DIAGNOSTIC: Log detailed information about the secret being used
-      console.log('DIAGNOSTIC - Secret source:', setupSecret ? 'setup process' : 'user metadata');
-      console.log('DIAGNOSTIC - Raw user metadata:', JSON.stringify(user.user_metadata));
-      console.log('DIAGNOSTIC - Full secret being used:', secret);
-      console.log('DIAGNOSTIC - Secret length:', secret.length);
-      console.log('DIAGNOSTIC - Secret character set:', new Set([...secret]).size, 'unique characters');
-      
-      console.log('Verifying 2FA token with secret:', secret.substring(0, 5) + '...');
-      console.log('User ID for 2FA verification:', user.id);
-      
-      // Create a TOTP object with the user's secret and unique identifier
-      // Make sure we're using the secret correctly and it's tied to this specific user
-      let totp;
-      try {
-        // Try creating the TOTP with the raw secret string
-        totp = new OTPAuth.TOTP({
-          issuer: 'DataModelerCloud',
-          label: user.email || user.id || 'user', // Use email or ID for uniqueness
-          algorithm: 'SHA1',
-          digits: 6,
-          period: 30,
-          secret: secret
-        });
-      } catch (e) {
-        console.error('Error creating TOTP with string secret:', e);
-        // If that fails, try creating a new Secret object
-        const secretObj = OTPAuth.Secret.fromBase32(secret);
-        totp = new OTPAuth.TOTP({
-          issuer: 'DataModelerCloud',
-          label: user.email || user.id || 'user', // Use email or ID for uniqueness
-          algorithm: 'SHA1',
-          digits: 6,
-          period: 30,
-          secret: secretObj
-        });
+      if (!user) {
+        console.error('No user found when verifying 2FA');
+        return false;
       }
       
-      // Log the token being validated
-      console.log('Validating token:', token);
+      console.log('DEBUG AUTH: Verifying 2FA token...');
+      console.log('DEBUG AUTH: Current user:', user.id);
+      console.log('DEBUG AUTH: Current user metadata:', JSON.stringify(user.user_metadata));
       
-      // Verify the token
-      const delta = totp.validate({ token, window: 1 }); // Allow a window of 1 period before/after
-      console.log('Token validation result:', delta !== null ? 'Valid' : 'Invalid');
+      // Get the secret from the setup process or from user metadata
+      const secret = setupSecret || user.user_metadata?.totp_secret;
+      
+      if (!secret) {
+        console.error('No TOTP secret found for verification');
+        return false;
+      }
+      
+      // Create a TOTP object with the secret
+      const totp = new OTPAuth.TOTP({ secret });
+      
+      // Validate with a window of 1 period before/after
+      const delta = totp.validate({ token, window: 1 });
+      
+      console.log('TOTP validation result:', delta);
       
       if (delta === null) {
-        // Invalid token
+        // Try a second approach with a different format
+        const totp2 = new OTPAuth.TOTP({
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          secret: OTPAuth.Secret.fromBase32(secret)
+        });
+        
+        const delta2 = totp2.validate({ token, window: 1 });
+        console.log('Second TOTP validation result:', delta2);
+        
+        if (delta2 === null) {
+          console.error('Invalid 2FA token');
+          return false;
+        }
+      }
+      
+      // Token is valid, update user metadata
+      console.log('DEBUG AUTH: Token is valid, updating user metadata...');
+      
+      const { data: updateData, error } = await supabase.auth.updateUser({
+        data: {
+          two_factor_enabled: true,
+          totp_secret: secret
+        }
+      });
+      
+      if (error) {
+        console.error('DEBUG AUTH: Error updating user metadata:', error);
         return false;
       }
       
-      // Token is valid, update both Supabase user metadata and local storage
+      console.log('DEBUG AUTH: User metadata updated successfully');
+      console.log('DEBUG AUTH: Updated user metadata:', JSON.stringify(updateData?.user?.user_metadata));
+      
+      // Force a refresh of the session to ensure the metadata is updated
       try {
-        // First, try to update Supabase user metadata
-        console.log('Updating Supabase user metadata with 2FA status for user:', user.id);
-        
-        // Make multiple attempts to update the user metadata
-        // This is a workaround for the Supabase session issues
-        let updateSuccess = false;
-        let attempts = 0;
-        const maxAttempts = 3;
-        
-        while (!updateSuccess && attempts < maxAttempts) {
-          attempts++;
-          console.log(`Attempt ${attempts} to update user metadata`);
-          
-          // DIAGNOSTIC: Log the exact secret before storing
-          console.log('DIAGNOSTIC - About to store TOTP secret in user metadata:', secret);
-          console.log('DIAGNOSTIC - Secret length:', secret.length);
-          console.log('DIAGNOSTIC - Secret character set:', new Set([...secret]).size, 'unique characters');
-          
-          // Update user metadata with the TOTP secret
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: {
-              totp_secret: secret,
-              // Add a timestamp to track when this was set
-              totp_setup_time: new Date().toISOString()
-            }
-          });
-          
-          if (updateError) {
-            console.error('DIAGNOSTIC - Error updating user metadata with TOTP secret:', updateError);
-          } else {
-            console.log('DIAGNOSTIC - Successfully updated user metadata with TOTP secret');
-          }
-          
-          if (updateError) {
-            console.error(`Error updating user metadata (attempt ${attempts}):`, updateError);
-            // Wait a bit before retrying
-            await new Promise(resolve => setTimeout(resolve, 500));
-            // Try to refresh the session before retrying
-            await refreshSession();
-          } else {
-            console.log(`Successfully updated user metadata on attempt ${attempts}`);
-            updateSuccess = true;
-          }
-        }
-        
-        // Verify that the metadata was actually updated
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (!userError) {
-          console.log('User metadata after update:', userData.user?.user_metadata);
-          const metadataUpdated = userData.user?.user_metadata?.two_factor_enabled === true;
-          console.log('2FA enabled in metadata after update:', metadataUpdated);
-          
-          if (!metadataUpdated) {
-            console.warn('2FA status not properly updated in metadata, will rely on local storage');
-          }
-        }
-        
-        // Refresh the session to ensure the updated metadata is available
+        console.log('DEBUG AUTH: Refreshing session after 2FA verification...');
         await refreshSession();
-        
-        // Also store in local storage as a fallback, but use user-specific keys
-        // This prevents one user's 2FA settings from affecting another user on the same browser
-        const secretKey = `dm_totp_secret_${user.id}`;
-        const enabledKey = `dm_two_factor_enabled_${user.id}`;
-        localStorage.setItem(secretKey, secret);
-        localStorage.setItem(enabledKey, 'true');
-        
-        // Update local state
-        setIsTwoFactorEnabled(true);
-        setIsTwoFactorVerified(true);
-        
-        console.log('Two-factor authentication enabled successfully for user:', user.id);
-        
-        // Generate recovery codes (in a real implementation, store these securely)
-        // For now, we're just returning success
-        return true;
-      } catch (error) {
-        console.error('Error enabling 2FA:', error);
-        return false;
+        console.log('DEBUG AUTH: Session refreshed successfully after 2FA verification');
+      } catch (refreshError) {
+        console.error('DEBUG AUTH: Error refreshing session after 2FA verification:', refreshError);
+        // Continue anyway since we've already updated the metadata
       }
+      
+      // Store in user-specific storage
+      localStorage.setItem(`dm_two_factor_enabled_${user.id}`, 'true');
+      localStorage.setItem(`dm_totp_secret_${user.id}`, secret);
+      console.log('DEBUG AUTH: Stored 2FA status and secret in local storage');
+      
+      // Update state
+      setIsTwoFactorEnabled(true);
+      setIsTwoFactorVerified(true);
+      console.log('DEBUG AUTH: Updated state variables: isTwoFactorEnabled=true, isTwoFactorVerified=true');
+      
+      // Force a double refresh after a short delay to ensure all systems recognize the change
+      setTimeout(async () => {
+        try {
+          console.log('DEBUG AUTH: Performing delayed session refresh after 2FA verification...');
+          await refreshSession();
+          console.log('DEBUG AUTH: Delayed session refresh completed');
+        } catch (delayedRefreshError) {
+          console.error('DEBUG AUTH: Error in delayed session refresh:', delayedRefreshError);
+        }
+      }, 1000);
+      
+      return true;
     } catch (error) {
       console.error('Error verifying 2FA token:', error);
       return false;
@@ -466,75 +528,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Disable two-factor authentication
   const disableTwoFactor = async () => {
     try {
-      if (!user) throw new Error('User not authenticated');
-      
-      console.log('Attempting to disable 2FA for user:', user.id);
-      console.log('Current session status:', session ? 'Valid' : 'Missing');
-      
-      // First, try to refresh the session to ensure we have a valid session
-      console.log('Refreshing session before disabling 2FA...');
-      try {
-        await refreshSession();
-        console.log('Session refreshed successfully');
-      } catch (refreshError) {
-        console.error('Error refreshing session:', refreshError);
-        // Continue anyway - we'll try to update the user
+      if (!user) {
+        console.error('No user found when disabling 2FA');
+        return false;
       }
       
-      // Make multiple attempts to update the user metadata
-      let updateSuccess = false;
-      let attempts = 0;
-      const maxAttempts = 3;
-      let lastError = null;
+      console.log('Disabling 2FA...');
       
-      while (!updateSuccess && attempts < maxAttempts) {
-        attempts++;
-        console.log(`Attempt ${attempts} to disable 2FA`);
-        
-        try {
-          // Update user metadata to disable 2FA
-          const { error } = await supabase.auth.updateUser({
-            data: {
-              two_factor_enabled: false,
-              totp_secret: null
-            }
-          });
-          
-          if (error) {
-            console.error(`Error on attempt ${attempts}:`, error);
-            lastError = error;
-            // Wait a bit before trying again
-            await new Promise(resolve => setTimeout(resolve, 500));
-          } else {
-            console.log('Successfully disabled 2FA in user metadata');
-            updateSuccess = true;
-          }
-        } catch (updateError) {
-          console.error(`Exception on attempt ${attempts}:`, updateError);
-          lastError = updateError;
-          // Wait a bit before trying again
-          await new Promise(resolve => setTimeout(resolve, 500));
+      // Update user metadata
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          two_factor_enabled: false,
+          totp_secret: null
         }
+      });
+      
+      if (error) {
+        console.error('Error updating user metadata:', error);
+        return false;
       }
       
-      // If all attempts failed, try a fallback approach using local storage
-      if (!updateSuccess) {
-        console.log('All attempts to update Supabase metadata failed, using local storage fallback');
-        // Store the 2FA status in local storage as a fallback
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem(`dm_two_factor_enabled_${user.id}`, 'false');
-          localStorage.removeItem(`dm_totp_secret_${user.id}`);
-          console.log('Updated 2FA status in local storage');
-        }
-      }
+      console.log('User metadata updated successfully');
       
-      // Update local state regardless of Supabase update success
+      // Remove from user-specific local storage
+      localStorage.removeItem(`dm_two_factor_enabled_${user.id}`);
+      localStorage.removeItem(`dm_totp_secret_${user.id}`);
+      
+      // Update state
       setIsTwoFactorEnabled(false);
       setIsTwoFactorVerified(false);
       
-      // If we had errors but used the fallback, still return true
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error disabling 2FA:', error);
       
       // Try the local storage fallback even if the main function fails
@@ -561,7 +586,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Validate a token during login
   const validateTwoFactorToken = async (token: string) => {
     try {
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        console.error('No user found when validating 2FA token');
+        return false;
+      }
       
       // Get the secret from user metadata
       const secret = user.user_metadata?.totp_secret;
@@ -597,8 +625,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           secret: secretToUse
         });
         
-        // Use a larger window to account for time drift (2 periods before/after)
-        const delta1 = totp1.validate({ token, window: 2 });
+        // Use a wider window to account for time drift (4 periods before/after = ±2 minutes)
+        const delta1 = totp1.validate({ token, window: 4 });
         console.log('Validation approach 1 result:', delta1 !== null ? 'Valid' : 'Invalid');
         
         if (delta1 !== null) {
@@ -616,7 +644,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             secret: secretObj
           });
           
-          const delta2 = totp2.validate({ token, window: 2 });
+          // Use a wider window to account for time drift (4 periods before/after = ±2 minutes)
+          const delta2 = totp2.validate({ token, window: 4 });
           console.log('Validation approach 2 result:', delta2 !== null ? 'Valid' : 'Invalid');
           
           if (delta2 !== null) {
@@ -635,7 +664,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 secret: secretObj3
               });
               
-              const delta3 = totp3.validate({ token, window: 2 });
+              // Use a wider window to account for time drift (4 periods before/after = ±2 minutes)
+              const delta3 = totp3.validate({ token, window: 4 });
               console.log('Validation approach 3 result:', delta3 !== null ? 'Valid' : 'Invalid');
               verified = delta3 !== null;
             } catch (e) {

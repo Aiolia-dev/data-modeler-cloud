@@ -19,36 +19,85 @@ export default function SettingsPage() {
   React.useEffect(() => {
     const check2FAStatus = async () => {
       try {
-        // First check if 2FA is enabled in the auth context
-        if (isTwoFactorEnabled) {
-          setIs2FAEnabled(true);
-          return;
+        console.log('DEBUG: Checking 2FA status in settings page');
+        console.log('DEBUG: User object:', user ? 'exists' : 'null', user?.id);
+        console.log('DEBUG: Auth context isTwoFactorEnabled:', isTwoFactorEnabled);
+        
+        // Default to not enabled
+        let enabled = false;
+        
+        // Only proceed with checks if we have a user object
+        if (user) {
+          if (user.user_metadata) {
+            console.log('DEBUG: User metadata:', JSON.stringify(user.user_metadata));
+            
+            // Check if 2FA is enabled in user metadata (most authoritative source)
+            if (user.user_metadata.two_factor_enabled === true) {
+              console.log('DEBUG: 2FA is enabled according to user metadata');
+              enabled = true;
+            }
+          } else {
+            console.log('DEBUG: User metadata is null or undefined');
+          }
+          
+          // If not enabled by metadata, check the auth context
+          if (!enabled && isTwoFactorEnabled) {
+            console.log('DEBUG: 2FA is enabled according to auth context');
+            enabled = true;
+          }
+          
+          // If still not enabled, check local storage as a final fallback
+          // but ONLY if we have a valid user ID
+          if (!enabled && user.id) {
+            const userSpecificKey = `dm_two_factor_enabled_${user.id}`;
+            const localEnabled = localStorage.getItem(userSpecificKey);
+            console.log('DEBUG: Local storage 2FA status:', {
+              key: userSpecificKey,
+              value: localEnabled
+            });
+            
+            if (localEnabled === 'true') {
+              console.log('DEBUG: 2FA is enabled according to local storage');
+              enabled = true;
+            }
+          }
+        } else {
+          console.log('DEBUG: No user object available, cannot reliably determine 2FA status');
+          // Clear any existing 2FA status when no user is available
+          enabled = false;
+          
+          // Clean up any temporary 2FA flags that might be causing false positives
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('dm_two_factor_enabled_temp_')) {
+              keysToRemove.push(key);
+            }
+          }
+          
+          // Remove any temporary keys
+          keysToRemove.forEach(key => {
+            console.log('DEBUG: Removing temporary 2FA key:', key);
+            localStorage.removeItem(key);
+          });
         }
         
-        // If not, check user metadata
-        if (user?.user_metadata?.two_factor_enabled) {
-          setIs2FAEnabled(true);
-          return;
-        }
-        
-        // Also check local storage as a fallback
-        const localEnabled = localStorage.getItem(`dm_two_factor_enabled_${user?.id}`);
-        if (localEnabled === 'true') {
-          setIs2FAEnabled(true);
-          return;
-        }
-        
-        // If we get here, 2FA is not enabled
-        setIs2FAEnabled(false);
+        // Update the state based on our determination
+        console.log('DEBUG: Final 2FA status determination:', enabled);
+        setIs2FAEnabled(enabled);
       } catch (err) {
         console.error('Error checking 2FA status:', err);
+        // Default to not enabled on error
+        setIs2FAEnabled(false);
       }
     };
     
     // Refresh the session first to get the latest user metadata
     const refreshAndCheck = async () => {
       try {
+        console.log('DEBUG: Refreshing session in settings page...');
         await refreshSession();
+        console.log('DEBUG: Session refreshed successfully');
         check2FAStatus();
       } catch (err) {
         console.error('Error refreshing session:', err);
@@ -56,7 +105,18 @@ export default function SettingsPage() {
       }
     };
     
+    console.log('DEBUG: Initial settings page load, calling refreshAndCheck');
     refreshAndCheck();
+    
+    // Set up a periodic check to ensure the 2FA status stays in sync
+    const intervalId = setInterval(() => {
+      console.log('DEBUG: Periodic 2FA status check');
+      check2FAStatus();
+    }, 5000); // Check every 5 seconds
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [user, isTwoFactorEnabled, refreshSession]);
 
   const handleDisableTwoFactor = async () => {
@@ -238,7 +298,17 @@ export default function SettingsPage() {
                   </Button>
                 ) : (
                   <Button 
-                    onClick={() => setShowSetup(true)}
+                    onClick={async () => {
+                      try {
+                        console.log('Refreshing session before showing 2FA setup...');
+                        await refreshSession();
+                        console.log('Session refreshed successfully, showing 2FA setup');
+                        setShowSetup(true);
+                      } catch (refreshError) {
+                        console.error('Error refreshing session:', refreshError);
+                        setError('Failed to prepare for 2FA setup. Please try again.');
+                      }
+                    }}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     Enable Two-Factor Authentication
@@ -254,7 +324,18 @@ export default function SettingsPage() {
                 >
                   ← Back
                 </Button>
-                <TwoFactorSetup onComplete={() => setShowSetup(false)} />
+                <TwoFactorSetup 
+                  onComplete={() => {
+                    setShowSetup(false);
+                    // Update 2FA status and show success message
+                    setIs2FAEnabled(true);
+                    setSuccess('Two-factor authentication has been enabled successfully!');
+                    // Refresh the page after a short delay to ensure all state is updated
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 2000);
+                  }} 
+                />
               </div>
             )}
           </div>
