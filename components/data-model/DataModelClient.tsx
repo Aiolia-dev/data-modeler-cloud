@@ -20,6 +20,7 @@ import { ReferentialList } from "@/components/referential/referential-list";
 import { EntityModal, EntityFormData } from "@/components/entity/entity-modal";
 import { usePermissions } from "@/context/permission-context";
 import DataModelTabs from "./DataModelTabs";
+import NLInterface from "@/components/nl-interface/NLInterface";
 
 interface DataModelClientProps {
   projectId: string;
@@ -614,6 +615,12 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
               <p className="text-gray-400">
                 This tab will display the generated SQL for your data model. The SQL generation component needs to be implemented.
               </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="nl-interface" className="mt-0">
+            <div className="bg-gray-800 rounded-lg p-0 border border-gray-700">
+              <NLInterface projectId={projectId} modelId={modelId} />
             </div>
           </TabsContent>
         </Tabs>

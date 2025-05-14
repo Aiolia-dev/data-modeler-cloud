@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2, Download, Upload, Settings, User } from "lucide-react";
+import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2, Download, Upload, Settings, User, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "@/context/navigation-context";
 import { useProjectRefresh } from "@/context/project-refresh-context";
