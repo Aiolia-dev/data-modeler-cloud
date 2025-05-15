@@ -620,7 +620,7 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
 
           <TabsContent value="nl-interface" className="mt-0">
             <div className="bg-gray-800 rounded-lg p-0 border border-gray-700">
-              <NLInterface projectId={projectId} modelId={modelId} />
+              <NLInterface projectId={projectId} dataModelId={modelId} />
             </div>
           </TabsContent>
         </Tabs>

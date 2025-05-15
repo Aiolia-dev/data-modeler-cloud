@@ -1,5 +1,3 @@
-"use client";
-
 import { Suspense } from 'react';
 import { NLInterface } from '@/components/nl-interface/NLInterface';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,11 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
  * This page provides a natural language interface for modifying data models
  * using plain English instructions.
  */
-type PageProps = {
-  params: { id: string; modelId: string };
-};
-
-export default function NLInterfacePage({ params }: PageProps) {
+export default function NLInterfacePage(props: any) {
+  const { params } = props;
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col space-y-2">

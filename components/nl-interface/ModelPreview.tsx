@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { DiagramCanvas } from '@/components/diagram/DiagramCanvas';
-import { EntityNode } from '@/components/diagram/EntityNode';
-import { RelationshipEdge } from '@/components/diagram/RelationshipEdge';
+import DiagramView from '@/components/diagram/DiagramView';
+import EntityNode from '@/components/diagram/EntityNode';
+import RelationshipEdge from '@/components/diagram/RelationshipEdge';
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 
