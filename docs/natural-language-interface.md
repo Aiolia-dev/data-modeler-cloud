@@ -28,6 +28,7 @@ OPENAI_API_KEY=your-api-key-here
   - Adding, updating, and removing attributes
   - Creating foreign keys and relationships
   - Defining referentials and rules
+- **Automated Entity Creation**: Entities are automatically created with a primary key (id) attribute, matching the behavior of the diagram view
 
 ## How to Use
 
@@ -47,6 +48,7 @@ Here are some examples of instructions you can give:
 - "Add an entity named Product with attributes name, price, and description"
 - "Delete the Order entity"
 - "Rename the User entity to Member"
+- "Create a Customer entity next to the Order entity"
 
 ### Join Entity Operations
 
@@ -101,6 +103,18 @@ The Natural Language Interface uses advanced AI technology to:
 3. Gather any additional information needed through follow-up questions
 4. Generate a preview of the changes
 5. Apply the changes to your data model using the existing CRUD APIs
+
+### Entity Creation Process
+
+When you ask the AI assistant to create an entity, the following process occurs:
+
+1. The AI processes your request and identifies it as an entity creation operation
+2. The system creates the entity with the specified name in your data model
+3. A primary key attribute named "id" of type UUID is automatically added to the entity
+4. The AI confirms the creation with a message that includes the entity's name
+5. If you specify positioning information (e.g., "next to Order entity"), the system will position the new entity accordingly
+
+This process mirrors the entity creation behavior in the diagram view, ensuring consistency across the application. Every entity created through the Natural Language Interface will have a primary key, just like entities created through the diagram's contextual menu.
 
 ## Limitations
 
