@@ -9,11 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
  * This page provides a natural language interface for modifying data models
  * using plain English instructions.
  */
-export default function NLInterfacePage({
-  params,
-}: {
+type PageProps = {
   params: { id: string; modelId: string };
-}) {
+};
+
+export default function NLInterfacePage({ params }: PageProps) {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col space-y-2">

@@ -17,14 +17,14 @@ import {
 import NLProcessor, { Message, ModelChange } from './NLProcessor';
 import EntityPreview from './EntityPreview';
 
-type NLInterfaceProps = {
+export type NLInterfaceProps = {
   projectId: string;
-  modelId: string;
+  dataModelId: string;
 };
 
-export default function NLInterface({ projectId, modelId }: NLInterfaceProps) {
+export function NLInterface({ projectId, dataModelId }: NLInterfaceProps) {
   // Initialize the NLProcessor
-  const nlProcessor = useRef(new NLProcessor(projectId, modelId));
+  const nlProcessor = useRef(new NLProcessor(projectId, dataModelId));
   
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -367,3 +367,5 @@ export default function NLInterface({ projectId, modelId }: NLInterfaceProps) {
     </>
   );
 }
+
+export default NLInterface;
