@@ -80,7 +80,31 @@ export default function NLInterface({ projectId, modelId }: NLInterfaceProps) {
         return;
       }
       
-      // Update the assistant message with the response
+      // Check if this is a standard entity creation
+      const isEntityCreation = response.changes && 
+        response.changes.length > 0 && 
+        response.changes[0].operation === 'add_entity';
+      
+      if (isEntityCreation) {
+        // The entity will be created automatically by the processRequest method
+        // Just update the assistant message with confirmation
+        const entityName = response.changes[0].entity || 'entity';
+        const confirmationMessage = `I've created the "${entityName}" entity with a primary key (id). You can see it in the diagram view.`;
+        
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === `${userMessageId}-assistant`
+              ? { ...msg, content: confirmationMessage, pending: false }
+              : msg
+          )
+        );
+        
+        return;
+      }
+      
+      // We no longer need to handle responses to placement questions since we don't ask for positioning anymore
+      
+      // For non-entity creation or if position is already specified, update the assistant message with the response
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === `${userMessageId}-assistant`
@@ -129,6 +153,18 @@ export default function NLInterface({ projectId, modelId }: NLInterfaceProps) {
       
       // Close the preview dialog
       setShowPreview(false);
+      
+      // If this was a join entity creation, trigger the Sugiyama algorithm
+      if (previewChanges.length > 0 && previewChanges[0].operation === 'add_join_entity') {
+        // Dispatch a custom event to trigger the Sugiyama algorithm
+        // This event will be caught by the DiagramView component
+        setTimeout(() => {
+          console.log('Dispatching event to run Sugiyama algorithm after join entity creation');
+          // Use a custom event that will be handled in the diagram
+          const event = new CustomEvent('run-sugiyama-layout');
+          window.dispatchEvent(event);
+        }, 500); // Wait for the join entity to be created and rendered
+      }
       
       // Show a success toast
       toast({

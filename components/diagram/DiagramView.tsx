@@ -116,6 +116,52 @@ const DiagramContent: React.FC<DiagramViewProps> = ({ dataModelId, projectId, se
       window.removeEventListener('focus-entity', handleFocusEntity as EventListener);
     };
   }, []);
+  
+  // Listen for the run-sugiyama-layout event (triggered after join entity creation)
+  useEffect(() => {
+    const handleRunSugiyamaLayout = () => {
+      console.log('[DiagramView] Running Sugiyama layout algorithm after join entity creation');
+      
+      // Simulate clicking the optimize button
+      const optimizeButton = document.querySelector('[data-testid="optimize-diagram-button"]');
+      if (optimizeButton instanceof HTMLElement) {
+        optimizeButton.click();
+        
+        // After a short delay, click the Sugiyama algorithm option
+        setTimeout(() => {
+          const sugiyamaOption = document.querySelector('#sugiyama');
+          if (sugiyamaOption instanceof HTMLElement) {
+            sugiyamaOption.click();
+            
+            // Then click the Apply Optimization button
+            setTimeout(() => {
+              const buttons = Array.from(document.querySelectorAll('button'));
+              const applyButton = buttons.find(button => 
+                button.textContent?.includes('Apply Optimization')
+              );
+              
+              if (applyButton instanceof HTMLElement) {
+                applyButton.click();
+              }
+            }, 100);
+          }
+        }, 100);
+      }
+    };
+    
+    // Add event listener for the run-sugiyama-layout event
+    window.addEventListener('run-sugiyama-layout', handleRunSugiyamaLayout);
+    
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener('run-sugiyama-layout', handleRunSugiyamaLayout);
+    };
+  }, []);
+  
+  // Note: We're using the run-sugiyama-layout event instead of optimize-diagram
+  // The run-sugiyama-layout event is triggered after join entity creation
+  // and automatically applies the Sugiyama algorithm to organize the diagram
+  
   // Get the React Flow utility functions for coordinate transformation
   const { screenToFlowPosition } = useReactFlow();
   

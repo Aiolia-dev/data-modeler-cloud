@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       - Distinguish clearly between entities and attributes
       - When a user mentions adding an attribute TO an entity, they want to modify an existing entity, not create a new one
       - If a user says "add attribute X to entity Y", they want to add a new attribute to an existing entity Y
-      - If a user says "create entity X", they want to create a new entity
+      - If a user says "create entity X" or "create table X", they want to create a new standard entity
       - Always confirm your understanding by being specific about what you're modifying
       
       ATTRIBUTE CREATION GUIDELINES:
@@ -79,6 +79,14 @@ export async function POST(request: Request) {
       - For attributes, always specify the entity they belong to using the 'entity' field
       - The 'attribute' field should contain the name of the attribute being created
       - You can specify additional properties like is_required, is_unique, is_primary_key, default_value, and length
+      
+      STANDARD ENTITY CREATION GUIDELINES:
+      - When a user asks to create an entity or table (without specifying a join entity), use the operation 'add_entity'
+      - The 'entity' field should contain the name of the new entity to be created
+      - If the user doesn't specify a name, use 'Untitled_entity' as the default name
+      - The system will automatically create a primary key attribute (id) for the entity
+      - The entity_type will be set to 'standard' automatically
+      - The user will be asked where to place the entity on the diagram if they don't specify a position
       
       JOIN ENTITY CREATION GUIDELINES:
       - A join entity (also called junction table, association table, or linking table) connects two existing entities in a many-to-many relationship
