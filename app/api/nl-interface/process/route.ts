@@ -3,10 +3,15 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client - only when the API key is available
+let openai: OpenAI | null = null;
+
+// Only initialize if we have an API key
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 /**
  * Process a natural language request to modify a data model
@@ -199,6 +204,18 @@ Remember to consider the existing structure and relationships in the data model 
       { role: 'user', content: nlRequest },
     ];
 
+    // Check if OpenAI client is initialized
+    if (!openai) {
+      console.error('OpenAI API key is missing. Please add it to your environment variables.');
+      return NextResponse.json(
+        { 
+          error: 'OpenAI API key is missing', 
+          message: 'Please add your OpenAI API key to the environment variables as OPENAI_API_KEY.' 
+        },
+        { status: 500 }
+      );
+    }
+    
     // Call the OpenAI API
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',

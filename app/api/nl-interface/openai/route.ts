@@ -38,24 +38,35 @@ export async function POST(request: Request) {
     }
 
     // Initialize OpenAI client
-    const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+    // During build time, this will be undefined, but that's okay as we handle it gracefully
+    let openai: OpenAI | null = null;
     
-    console.log('OpenAI API Key available:', !!apiKey); // Log whether we have an API key (not the key itself)
-    
-    if (!apiKey) {
-      console.error('OpenAI API key not found');
+    try {
+      const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+      
+      console.log('OpenAI API Key available:', !!apiKey); // Log whether we have an API key (not the key itself)
+      
+      if (!apiKey) {
+        console.error('OpenAI API key not found');
+        return NextResponse.json(
+          { 
+            error: 'OpenAI API key not configured', 
+            message: 'Please add your OpenAI API key to the .env.local file as OPENAI_API_KEY=your-key'
+          },
+          { status: 500 }
+        );
+      }
+      
+      openai = new OpenAI({
+        apiKey: apiKey,
+      });
+    } catch (error) {
+      console.error('Error initializing OpenAI client:', error);
       return NextResponse.json(
-        { 
-          error: 'OpenAI API key not configured', 
-          message: 'Please add your OpenAI API key to the .env.local file as OPENAI_API_KEY=your-key'
-        },
+        { error: 'Failed to initialize OpenAI client' },
         { status: 500 }
       );
     }
-    
-    const openai = new OpenAI({
-      apiKey: apiKey,
-    });
 
     // Add system message with context about data modeling
     const systemMessage = {
@@ -124,6 +135,15 @@ export async function POST(request: Request) {
       2. The system will automatically create the necessary foreign keys and relationships`
     };
 
+    // Check if OpenAI client is initialized
+    if (!openai) {
+      console.error('OpenAI client not initialized');
+      return NextResponse.json(
+        { error: 'OpenAI client not initialized' },
+        { status: 500 }
+      );
+    }
+    
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview', // Use the appropriate model
