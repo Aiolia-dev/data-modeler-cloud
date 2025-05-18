@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { createSafeClient } from '@/utils/supabase/safe-client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/context/auth-context';
 
 export function AuthDebug() {
@@ -13,7 +13,7 @@ export function AuthDebug() {
   const [refreshing, setRefreshing] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
 
-  const supabase = createSafeClient();
+  const supabase = createClientComponentClient();
 
   const handleRefreshSession = async () => {
     setRefreshing(true);

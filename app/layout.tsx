@@ -1,6 +1,6 @@
 // DeployButton import removed
 import { EnvVarWarning } from "@/components/env-var-warning";
-import HeaderAuth from "@/components/header-auth";
+import HeaderAuthClient from "@/components/header-auth-client";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { hasEnvVars } from "@/utils/supabase/check-env-vars";
 import { Geist } from "next/font/google";
@@ -71,7 +71,7 @@ export default function RootLayout({
                     </Link>
                     {/* DeployButton removed */}
                   </div>
-                  {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
+                  {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuthClient />}
                 </div>
               </nav>
               <div className="flex flex-col gap-4 w-full px-5">

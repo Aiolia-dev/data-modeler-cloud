@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePermissions } from '@/context/permission-context';
 import { useAuth } from '@/context/auth-context';
-import { createSafeClient } from '@/utils/supabase/safe-client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 /**
  * A debug component to display user permissions and metadata
@@ -43,7 +43,7 @@ export function PermissionDebug() {
     setError(null);
     
     try {
-      const supabase = createSafeClient();
+      const supabase = createClientComponentClient();
       
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
