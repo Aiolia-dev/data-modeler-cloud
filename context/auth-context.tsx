@@ -331,7 +331,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (!secretToUse) {
         // If no setup secret provided, check if we have a temporary one in local storage
-        secretToUse = localStorage.getItem(`dm_totp_secret_temp_${user.id}`);
+        const tempSecret = localStorage.getItem(`dm_totp_secret_temp_${user.id}`);
+        secretToUse = tempSecret || undefined;
       }
       
       if (!secretToUse) {
@@ -438,7 +439,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // If not in metadata, try local storage
       if (!secretToUse) {
-        secretToUse = localStorage.getItem(`dm_totp_secret_${user.id}`);
+        const localSecret = localStorage.getItem(`dm_totp_secret_${user.id}`);
+        secretToUse = localSecret || undefined;
       }
       
       if (!secretToUse) {
