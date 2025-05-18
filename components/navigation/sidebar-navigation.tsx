@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createSafeClient } from "@/utils/supabase/safe-client";
 import { ChevronDown, ChevronRight, Database, FolderIcon, PlusIcon, MoreHorizontal, Edit, Shield, Trash2, Download, Upload, Settings, User, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "@/context/navigation-context";
@@ -210,7 +210,7 @@ export default function SidebarNavigation({ collapsed }: SidebarNavigationProps)
   useEffect(() => {
     async function checkSuperuser() {
       try {
-        const supabase = createClientComponentClient();
+        const supabase = createSafeClient();
         
         // First check if we have an active session to avoid AuthSessionMissingError
         const { data: sessionData } = await supabase.auth.getSession();

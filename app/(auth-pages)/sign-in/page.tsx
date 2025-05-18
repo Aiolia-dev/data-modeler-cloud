@@ -1,5 +1,5 @@
 import { Message } from "@/components/form-message";
-import { SignInForm } from "@/components/auth/sign-in-form";
+import { FixedSignInForm } from "@/components/auth/fixed-sign-in-form";
 
 export default async function Login(props: { searchParams: Promise<Message> }) {
   const searchParams = await props.searchParams;
@@ -26,7 +26,7 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
   
   return (
     <div className="bg-gray-900 rounded-lg p-8 w-[450px] shadow-xl">
-      <SignInForm message={message} />
+      <FixedSignInForm message={message} />
     </div>
   );
 }

@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { updateSession } from "@/utils/supabase/middleware";
-import { createServerClient } from "@supabase/ssr";
+
+/**
+ * NOTE: All cookie access in middleware must use async APIs (e.g., cookies() from next/headers).
+ * The Supabase middleware client must be awaited, as it is now async.
+ */
+import { createMiddlewareClient } from "@/utils/supabase/fixed-client";
 import { checkRateLimit, applyRateLimitHeaders, createRateLimitExceededResponse } from "@/utils/rate-limit";
 import { logApiRequest } from "@/utils/api-logger";
 
@@ -53,91 +57,120 @@ export async function middleware(request: NextRequest) {
       return createRateLimitExceededResponse(rateLimitInfo);
     }
     
-    // Continue with normal request processing
-    const response = await updateSession(request);
+    // Initialize Supabase client with the request and response (async)
+    const { supabase, response: supabaseResponse } = await createMiddlewareClient(request);
     
     // Get user ID from session if available
     let userId: string | undefined;
     try {
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get(name) {
-              return request.cookies.get(name)?.value;
-            },
-            set() {}, // Not needed for this check
-            remove() {}, // Not needed for this check
-          },
-        }
-      );
-      const { data } = await supabase.auth.getSession();
-      userId = data.session?.user?.id;
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        userId = data.session?.user?.id;
+      }
     } catch (error) {
       console.error('Error getting user ID for API logging:', error);
     }
     
-    // Log the API request
+    // Log the API request regardless of authentication status
     await logApiRequest({
       userId,
       path: request.nextUrl.pathname,
       method: request.method,
-      statusCode: response.status,
+      statusCode: supabaseResponse.status,
       responseTimeMs: Date.now() - startTime,
       ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || 
                 request.headers.get('x-real-ip') || 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown'
     });
-    
+
     // Apply rate limit headers
-    applyRateLimitHeaders(response, rateLimitInfo);
+    applyRateLimitHeaders(supabaseResponse, rateLimitInfo);
     
     // Apply security headers to all responses
     Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
+      supabaseResponse.headers.set(key, value);
     });
-    
-    return response;
+
+    return supabaseResponse;
   }
   
   // For non-API requests, proceed with normal middleware
-  const response = await updateSession(request);
+  const securityResponse = NextResponse.next();
   
   // Apply security headers to all responses
   Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
+    securityResponse.headers.set(key, value);
   });
   
-  // Check if the request is for an admin route or project route
+  // Get the current pathname
   const { pathname } = request.nextUrl;
   
-  // Create a Supabase client for this request
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name) {
-          return request.cookies.get(name)?.value;
-        },
-        set() {}, // We don't need to set cookies in this middleware check
-        remove() {}, // We don't need to remove cookies in this middleware check
-      },
-    }
-  );
-  
+  // Initialize Supabase client for non-API routes (async)
+  const { supabase, response } = await createMiddlewareClient(request);
+
+  // If migration occurred and a redirect is needed, return immediately
+  if (!supabase) {
+    return response;
+  }
+
+  // Debug: print the token values being passed (async cookies)
+  const cookieStore = await (await import('next/headers')).cookies();
+  const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/(?:https?:\/\/)?([^\.]+)/)?.[1];
+  const accessTokenName = projectRef ? `sb-${projectRef}-access-token` : 'undefined';
+  const refreshTokenName = projectRef ? `sb-${projectRef}-refresh-token` : 'undefined';
+  console.log('[DEBUG] ACCESS TOKEN:', cookieStore.get(accessTokenName)?.value);
+  console.log('[DEBUG] REFRESH TOKEN:', cookieStore.get(refreshTokenName)?.value);
+
   // Get the user from the session
-  const { data } = await supabase.auth.getSession();
+  let { data, error } = await supabase.auth.getSession();
+  console.log('[DEBUG] Supabase getSession data:', data, 'error:', error);
+  
+  // If no session but we have a refresh token, try to refresh the session
+  if (!data.session && cookieStore.get(refreshTokenName)?.value) {
+    console.log('[DEBUG] No session found but refresh token exists, attempting to refresh...');
+    try {
+      const refreshToken = cookieStore.get(refreshTokenName)?.value;
+      if (refreshToken) {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+          refresh_token: refreshToken
+        });
+        
+        if (refreshData?.session) {
+          console.log('[DEBUG] Session refreshed successfully');
+          data = refreshData;
+          error = refreshError;
+        } else if (refreshError) {
+          console.error('[DEBUG] Error refreshing session:', refreshError);
+        }
+      }
+    } catch (refreshErr) {
+      console.error('[DEBUG] Unexpected error refreshing session:', refreshErr);
+    }
+  }
+  
   const user = data.session?.user;
+
+  // Debug log to track authentication state and cookies
+  console.log(`[Middleware] Path: ${pathname}, Has User: ${!!user}, User Email: ${user?.email || 'none'}`);
+  console.log('[Middleware] Session:', data.session, 'Error:', error);
+  console.log('[Middleware] Cookies:', cookieStore.getAll());
+  
   
   if (!user) {
     // If no user, redirect to sign-in for protected routes
     if (pathname.startsWith('/protected') || pathname.startsWith('/admin-direct')) {
+      console.log('[Main Middleware] No user found, redirecting to sign-in');
       const redirectUrl = new URL('/sign-in', request.url);
       return NextResponse.redirect(redirectUrl);
     }
     return response;
+  }
+  
+  // If we have a user and we're on the sign-in page, redirect to protected
+  if (user && (pathname === '/sign-in' || pathname === '/login')) {
+    console.log('[Main Middleware] User found on sign-in page, redirecting to protected');
+    const redirectUrl = new URL('/protected', request.url);
+    return NextResponse.redirect(redirectUrl);
   }
   
   // Check if user is a superuser
