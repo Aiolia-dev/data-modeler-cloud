@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
@@ -28,7 +28,18 @@ export function SignInForm({ message }: { message?: { type: string; text: string
       router.push('/protected');
     }
   }, [isAuthenticated, router]);
-  const supabase = createClientComponentClient();
+  // Create a fresh browser client with proper configuration
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        flowType: 'pkce'
+      }
+    }
+  );
   const { isTwoFactorEnabled, isTwoFactorVerified } = useAuth();
 
   // Use client-side authentication first to check for 2FA
