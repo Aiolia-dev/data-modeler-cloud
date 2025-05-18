@@ -38,8 +38,14 @@ export async function middleware(req: NextRequest) {
     
     // For protected routes, redirect to login if no session
     if (req.nextUrl.pathname.startsWith('/protected') && !session) {
-      console.log('[Auth Middleware] No session found, redirecting to login');
-      return NextResponse.redirect(new URL('/login', req.url));
+      console.log('[Auth Middleware] No session found, redirecting to sign-in');
+      return NextResponse.redirect(new URL('/sign-in', req.url));
+    }
+    
+    // If we have a session and we're on the sign-in page, redirect to protected
+    if (session && (req.nextUrl.pathname === '/sign-in' || req.nextUrl.pathname === '/login')) {
+      console.log('[Auth Middleware] Session found on sign-in page, redirecting to protected');
+      return NextResponse.redirect(new URL('/protected', req.url));
     }
   } catch (err) {
     console.error('[Auth Middleware] Unexpected error:', err);

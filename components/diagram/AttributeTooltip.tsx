@@ -21,6 +21,7 @@ export interface AttributeData {
   description?: string;
   rules?: number;
   referencedBy?: number;
+  usageEntities?: string[];
 }
 
 interface AttributeTooltipProps {
@@ -135,10 +136,28 @@ export const AttributeTooltip: React.FC<AttributeTooltipProps> = ({
       </div>
       
       {/* Foreign Key Reference */}
-      {isForeignKey && attribute.referencedEntity && (
+      {isForeignKey && (
         <div className="mb-3 p-2 bg-blue-900 bg-opacity-20 border border-blue-800 rounded">
           <p className="text-xs text-gray-400 mb-1">References:</p>
-          <p className="text-sm text-white">{attribute.referencedEntity}</p>
+          <p className="text-sm text-white">
+            {typeof attribute.referencedEntity === 'string' && attribute.referencedEntity !== '0' 
+              ? attribute.referencedEntity 
+              : 'Unknown Entity'}
+          </p>
+        </div>
+      )}
+      
+      {/* Usage in Other Entities */}
+      {isForeignKey && attribute.usageEntities && attribute.usageEntities.length > 0 && (
+        <div className="mb-3 p-2 bg-indigo-900 bg-opacity-20 border border-indigo-800 rounded">
+          <p className="text-xs text-gray-400 mb-1">Used as Foreign Key in:</p>
+          <div className="max-h-24 overflow-y-auto">
+            {attribute.usageEntities.map((entityName, index) => (
+              <p key={index} className="text-sm text-white py-0.5">
+                {entityName}
+              </p>
+            ))}
+          </div>
         </div>
       )}
       
@@ -152,17 +171,6 @@ export const AttributeTooltip: React.FC<AttributeTooltipProps> = ({
       
       {/* Quick Actions */}
       <div className="flex gap-2 mt-4">
-        {/* Quick Edit Button */}
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex-1 text-xs text-green-400 border-green-800"
-          onClick={() => onQuickEdit?.(attribute.id)}
-        >
-          <PenIcon className="h-3 w-3 mr-1" />
-          Quick Edit
-        </Button>
-        
         {isForeignKey && attribute.referencedEntity && (
           <Button 
             variant="outline" 

@@ -30,6 +30,7 @@ interface AttributeData {
   referencedEntity?: string;
   rules?: number;
   referencedBy?: number;
+  usageEntities?: string[];
 }
 
 interface EntityNodeData {
@@ -51,6 +52,7 @@ interface EntityNodeData {
     isForeignKey?: boolean;
     is_foreign_key?: boolean;
     referencedEntity?: string;
+    referenced_entity_id?: string;
   }>;
   undimmedHandles?: string[];
   dimmed?: boolean;
@@ -125,6 +127,9 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
   const [hoveredAttribute, setHoveredAttribute] = useState<AttributeData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{x: number, y: number} | null>(null);
   const [attributeRules, setAttributeRules] = useState<Record<string, number>>({});
+  const [attributeReferences, setAttributeReferences] = useState<Record<string, number>>({});
+  const [entityNames, setEntityNames] = useState<Record<string, string>>({});
+  const [attributeUsage, setAttributeUsage] = useState<Record<string, string[]>>({});
   const [selectedAttribute, setSelectedAttribute] = useState<AttributeData | null>(null);
   const [showQuickEditModal, setShowQuickEditModal] = useState(false);
   
@@ -132,15 +137,15 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
   const [showNewAttributeModal, setShowNewAttributeModal] = useState(false);
   const [showForeignKeyModal, setShowForeignKeyModal] = useState(false);
   
-  // Fetch rules for this entity when selected
+  // Fetch rules, reference counts, and entity names when selected
   React.useEffect(() => {
     if (selected && data.id) {
-      const fetchRulesForEntity = async () => {
+      const fetchEntityData = async () => {
         try {
           // Fetch rules for this entity
-          const response = await fetch(`/api/rules?entityId=${data.id}`);
-          if (response.ok) {
-            const rulesData = await response.json();
+          const rulesResponse = await fetch(`/api/rules?entityId=${data.id}`);
+          if (rulesResponse.ok) {
+            const rulesData = await rulesResponse.json();
             
             // Count rules per attribute
             const rulesByAttribute: Record<string, number> = {};
@@ -176,17 +181,48 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
               });
             });
             
-            // Log the rule counts for debugging
             console.log('Rules by attribute ID:', rulesByAttribute);
-            
             setAttributeRules(rulesByAttribute);
           }
+          
+          // Fetch reference counts for attributes in this entity
+          const referencesResponse = await fetch(`/api/attribute-references?entityId=${data.id}`);
+          if (referencesResponse.ok) {
+            const referencesData = await referencesResponse.json();
+            if (referencesData.referenceCounts) {
+              console.log('References by attribute ID:', referencesData.referenceCounts);
+              setAttributeReferences(referencesData.referenceCounts);
+            }
+          }
+          
+          // Collect all referenced entity IDs from attributes
+          const referencedEntityIds = new Set<string>();
+          data.attributes.forEach(attr => {
+            if ((attr.isForeignKey || attr.is_foreign_key) && attr.referencedEntity) {
+              referencedEntityIds.add(attr.referencedEntity);
+            } else if ((attr.isForeignKey || attr.is_foreign_key) && attr.referenced_entity_id) {
+              referencedEntityIds.add(attr.referenced_entity_id);
+            }
+          });
+          
+          // If we have referenced entities, fetch their names
+          if (referencedEntityIds.size > 0) {
+            const entityIdsArray = Array.from(referencedEntityIds);
+            const entityNamesResponse = await fetch(`/api/entity-names?ids=${entityIdsArray.join(',')}`);
+            if (entityNamesResponse.ok) {
+              const entityNamesData = await entityNamesResponse.json();
+              if (entityNamesData.entityNames) {
+                console.log('Entity names:', entityNamesData.entityNames);
+                setEntityNames(entityNamesData.entityNames);
+              }
+            }
+          }
         } catch (error) {
-          console.error('Error fetching rules for entity:', error);
+          console.error('Error fetching entity data:', error);
         }
       };
       
-      fetchRulesForEntity();
+      fetchEntityData();
     }
   }, [selected, data.id, data.attributes]);
 
@@ -358,11 +394,38 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                 <div 
                   key={attr.id} 
                   className={`px-2 py-1 flex items-center gap-2 ${isPrimaryKey ? 'bg-purple-950 bg-opacity-30' : isForeignKey ? 'bg-blue-950 bg-opacity-30' : ''} hover:bg-gray-700 transition-colors cursor-pointer`}
-                  onMouseEnter={(e) => {
+                  onMouseEnter={async (e) => {
                     // Only show tooltip if the entity is selected
                     if (selected) {
                       // Get actual rule count for this attribute
                       const ruleCount = attributeRules[attr.id] || 0;
+                      
+                      // For foreign keys, fetch all entities that use this attribute name
+                      let usageEntities: string[] = [];
+                      if (isForeignKey && dataModelId) {
+                        try {
+                          // Check if we already have the usage data for this attribute name
+                          if (!attributeUsage[attr.name]) {
+                            const response = await fetch(`/api/attribute-usage?name=${attr.name}&dataModelId=${dataModelId}`);
+                            if (response.ok) {
+                              const data = await response.json();
+                              if (data.entities && data.entities.length > 0) {
+                                // Store the entity names that use this attribute
+                                const entityNames = data.entities.map((entity: any) => entity.name);
+                                setAttributeUsage(prev => ({
+                                  ...prev,
+                                  [attr.name]: entityNames
+                                }));
+                                usageEntities = entityNames;
+                              }
+                            }
+                          } else {
+                            usageEntities = attributeUsage[attr.name];
+                          }
+                        } catch (error) {
+                          console.error('Error fetching attribute usage:', error);
+                        }
+                      }
                       
                       // Create enhanced attribute data for the tooltip with actual data
                       const enhancedAttr: AttributeData = {
@@ -373,13 +436,19 @@ const EntityNode: React.FC<NodeProps<EntityNodeData>> = ({ data, selected }) => 
                         isForeignKey: isForeignKey,
                         isRequired: isRequired,
                         isUnique: isUnique,
-                        referencedEntity: attr.referencedEntity,
+                        referencedEntity: attr.referencedEntity 
+                          ? entityNames[attr.referencedEntity] || attr.referencedEntity 
+                          : attr.referenced_entity_id 
+                            ? entityNames[attr.referenced_entity_id] || attr.referenced_entity_id 
+                            : undefined,
                         // Use the actual description from the database if available
                         description: attr.description || '',
                         // Use actual rule count
                         rules: ruleCount,
-                        // For referenced by, we could fetch this data similarly
-                        referencedBy: isForeignKey ? 0 : 0
+                        // Use actual reference count for primary keys
+                        referencedBy: isPrimaryKey ? (attributeReferences[attr.id] || 0) : 0,
+                        // Add the usage entities for foreign keys
+                        usageEntities: isForeignKey ? usageEntities : undefined
                       };
                       setHoveredAttribute(enhancedAttr);
                       setTooltipPosition({ x: e.clientX, y: e.clientY });
