@@ -8,11 +8,8 @@ import { hasEnvVars } from "@/utils/supabase/check-env-vars";
 export default function ConditionalHeaderAuth() {
   const pathname = usePathname();
   
-  // Hide the auth UI in the main layout when on protected pages
-  // since the protected layout will show its own auth UI
-  if (pathname.startsWith('/protected')) {
-    return null;
-  }
+  // Always show the auth UI in the main layout
+  // We've removed it from the protected layout
   
   return !hasEnvVars ? <EnvVarWarning /> : <HeaderAuthClient />;
 }

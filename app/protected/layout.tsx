@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { NavigationProvider, useNavigation } from "@/context/navigation-context";
 import { ProjectRefreshProvider } from "@/context/project-refresh-context";
 import AdminHeaderButtons from "@/components/navigation/admin-header-buttons";
-import UserAuthButtons from "@/components/navigation/user-auth-buttons";
 
 
 function ProtectedLayoutContent({
@@ -79,7 +78,6 @@ function ProtectedLayoutContent({
           
           <div className="flex items-center space-x-4">
             <AdminHeaderButtons />
-            <UserAuthButtons />
           </div>
         </div>
         
