@@ -77,7 +77,7 @@ export function FixedSignInForm({ message }: { message?: { type: string; text: s
   };
 
   return (
-    <form className="flex flex-col w-full" onSubmit={handleSubmit}>
+    <form className="flex flex-col w-full" method="post" onSubmit={handleSubmit}>
       <h1 className="text-2xl font-medium mb-2">Sign in</h1>
       <p className="text-sm text-gray-400 mb-8">
         Access your data modeling workspace

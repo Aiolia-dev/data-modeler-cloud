@@ -19,6 +19,15 @@ export function SignInForm({ message }: { message?: { type: string; text: string
   const [user, setUser] = useState<any>(null);
   const [twoFactorSecret, setTwoFactorSecret] = useState('');
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  
+  // Check if user is already authenticated and redirect if needed
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('User is already authenticated, redirecting to protected page');
+      router.push('/protected');
+    }
+  }, [isAuthenticated, router]);
   const supabase = createClientComponentClient();
   const { isTwoFactorEnabled, isTwoFactorVerified } = useAuth();
 
@@ -91,51 +100,57 @@ export function SignInForm({ message }: { message?: { type: string; text: string
         // Get the secret from metadata or user-specific local storage
         const metadataSecret = data.user?.user_metadata?.totp_secret;
         const userSpecificSecret = localStorage.getItem(`dm_totp_secret_${data.user?.id}`);
-        const fallbackSecret = localStorage.getItem('dm_totp_secret'); // Legacy fallback
-        const secret = metadataSecret || userSpecificSecret || fallbackSecret || '';
         
-        console.log('Using TOTP secret from:', metadataSecret ? 'metadata' : 'localStorage');
-        
-        setTwoFactorSecret(secret);
-        setShowTwoFactor(true);
-        setIsLoading(false);
-        return;
+        if (metadataSecret || userSpecificSecret) {
+          console.log('Found TOTP secret, proceeding with 2FA verification');
+          setTwoFactorSecret(metadataSecret || userSpecificSecret || '');
+          setShowTwoFactor(true);
+          setIsLoading(false);
+          return;
+        } else {
+          console.error('2FA is enabled but no TOTP secret found');
+          throw new Error('Two-factor authentication is enabled but no secret key was found. Please contact support.');
+        }
       } else {
-        console.log('2FA is not enabled, proceeding with normal sign-in');
+        console.log('2FA not enabled, proceeding with direct redirection');
+        
+        // Use Next.js router for navigation
+        console.log('Redirecting to protected page using Next.js router...');
+        router.push('/protected');
+        
+        // Set a fallback with direct navigation in case router doesn't work
+        setTimeout(() => {
+          console.log('Fallback: Using direct navigation');
+          window.location.href = '/protected';
+        }, 500);
       }
-      
-      // If 2FA is not enabled, proceed with the server action for session handling
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('password', password);
-      formData.append('skip2FA', 'true'); // Indicate that 2FA check is already done
-      
-      // Use the server action to handle authentication
-      await signInAction(formData);
-      
-      // The server action will handle the redirect
     } catch (err: any) {
-      console.error('Sign-in error:', err);
-      setError(err.message || 'An error occurred during sign in');
+      console.error('Error during sign-in:', err);
+      setError(err.message || 'An error occurred during sign-in');
       setIsLoading(false);
     }
   };
 
   const handleTwoFactorSuccess = async () => {
-    // 2FA verification successful, proceed with server action for session handling
+    setIsLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('password', password);
-      formData.append('twoFactorVerified', 'true');
+      // After successful 2FA verification, we can directly navigate to the protected page
+      // The user is already authenticated at this point
+      console.log('2FA verification successful, redirecting to protected page');
       
-      // Use the server action to handle authentication and session
-      await signInAction(formData);
+      // Use Next.js router for navigation
+      console.log('Redirecting to protected page using Next.js router...');
+      router.push('/protected');
       
-      // The server action will handle the redirect
+      // Set a fallback with direct navigation in case router doesn't work
+      setTimeout(() => {
+        console.log('Fallback: Using direct navigation');
+        window.location.href = '/protected';
+      }, 500);
     } catch (err: any) {
       console.error('Error after 2FA verification:', err);
       setError(err.message || 'An error occurred after 2FA verification');
+      setIsLoading(false);
     }
   };
 
@@ -158,7 +173,7 @@ export function SignInForm({ message }: { message?: { type: string; text: string
   }
 
   return (
-    <form className="flex flex-col w-full" onSubmit={handleSubmit} action={signInAction}>
+    <form className="flex flex-col w-full" method="post" onSubmit={handleSubmit}>
       <h1 className="text-2xl font-medium mb-2">Sign in</h1>
       <p className="text-sm text-gray-400 mb-8">
         Access your data modeling workspace

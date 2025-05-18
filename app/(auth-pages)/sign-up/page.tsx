@@ -38,7 +38,7 @@ export default function Signup(props: {
 
   return (
     <div className="bg-gray-900 rounded-lg p-8 w-[450px] shadow-xl">
-      <form className="flex flex-col w-full" action={signUpAction} onSubmit={(e) => {
+      <form className="flex flex-col w-full" method="post" action={signUpAction} onSubmit={(e) => {
         if (!isPasswordValid) {
           e.preventDefault();
           alert('Please create a stronger password that meets all requirements.');
