@@ -161,8 +161,10 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/protected') || pathname.startsWith('/admin-direct')) {
       console.log('[Main Middleware] No user found, redirecting to sign-in');
       const redirectUrl = new URL('/sign-in', request.url);
+      // Return the redirect response directly, not the Supabase response
       return NextResponse.redirect(redirectUrl);
     }
+    // For non-protected routes, return the Supabase response
     return response;
   }
   
