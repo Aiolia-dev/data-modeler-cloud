@@ -105,6 +105,25 @@ export async function middleware(request: NextRequest) {
   // Get the current pathname
   const { pathname } = request.nextUrl;
   
+  // Check if the request is for an authentication route that needs security check
+  const requiresSecurityCheck = 
+    (pathname.startsWith('/sign-in') || 
+     pathname.startsWith('/sign-up') || 
+     pathname === '/auth-pages/sign-in' || 
+     pathname === '/auth-pages/sign-up');
+  
+  // Check if the security check has been passed
+  const securityCheckPassed = request.cookies.get('security_check_passed')?.value === 'true';
+  
+  // If the route requires security check and the check hasn't been passed, redirect to security-check
+  if (requiresSecurityCheck && !securityCheckPassed && pathname !== '/security-check') {
+    // Create the redirect URL with the original destination as a query parameter
+    const redirectUrl = new URL('/security-check', request.url);
+    redirectUrl.searchParams.set('redirectTo', pathname);
+    
+    return NextResponse.redirect(redirectUrl);
+  }
+  
   // Initialize Supabase client for non-API routes (async)
   const { supabase, response } = await createMiddlewareClient(request);
 

@@ -149,7 +149,7 @@ export default function NewHero() {
           </p>
           
           <div className="flex gap-4 mb-8">
-            <Link href="/auth-pages/sign-up" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors">
+            <Link href="/security-check?redirectTo=/auth-pages/sign-up" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors">
               Get Started
             </Link>
             <Link href="#demo" className="border border-blue-400 hover:bg-blue-800/30 text-white px-6 py-3 rounded-md font-medium transition-colors">
