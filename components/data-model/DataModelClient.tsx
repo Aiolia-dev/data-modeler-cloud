@@ -21,6 +21,7 @@ import { EntityModal, EntityFormData } from "@/components/entity/entity-modal";
 import { usePermissions } from "@/context/permission-context";
 import DataModelTabs from "./DataModelTabs";
 import NLInterface from "@/components/nl-interface/NLInterface";
+import SqlGenerator from "@/components/sql/SqlGenerator";
 
 interface DataModelClientProps {
   projectId: string;
@@ -611,10 +612,14 @@ export default function DataModelClient({ projectId, modelId }: DataModelClientP
 
           <TabsContent value="sql" className="mt-0">
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold mb-4">SQL Generation</h2>
-              <p className="text-gray-400">
-                This tab will display the generated SQL for your data model. The SQL generation component needs to be implemented.
-              </p>
+              {/* Only render SQL Generator when the SQL tab is active to ensure proper entity loading */}
+              {activeTab === "sql" && (
+                <SqlGenerator 
+                  entities={entities} 
+                  dataModelId={modelId} 
+                  projectId={projectId} 
+                />
+              )}
             </div>
           </TabsContent>
 

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="codeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="visualGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e40af" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#1e3a8a" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Animation container -->
+  <g>
+    <!-- Code section -->
+    <g>
+      <rect x="10" y="10" width="108" height="50" rx="4" fill="url(#codeGradient)" stroke="#3b82f6" stroke-width="1"/>
+      
+      <!-- Code lines -->
+      <rect x="15" y="15" width="70" height="3" rx="1" fill="#64748b"/>
+      <rect x="15" y="22" width="90" height="3" rx="1" fill="#64748b"/>
+      <rect x="20" y="29" width="60" height="3" rx="1" fill="#3b82f6"/>
+      <rect x="20" y="36" width="75" height="3" rx="1" fill="#3b82f6"/>
+      <rect x="15" y="43" width="50" height="3" rx="1" fill="#64748b"/>
+      <rect x="15" y="50" width="65" height="3" rx="1" fill="#64748b"/>
+      
+      <!-- Animated typing cursor -->
+      <rect x="85" y="36" width="2" height="3" fill="#ffffff">
+        <animate attributeName="opacity" values="0;1;0" dur="1.2s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+    
+    <!-- Arrow animation -->
+    <g>
+      <path d="M64 65 L64 75" stroke="#3b82f6" stroke-width="2" stroke-linecap="round">
+        <animate attributeName="stroke-dasharray" values="0,12;12,0" dur="1s" repeatCount="indefinite"/>
+      </path>
+      <polygon points="60,75 64,80 68,75" fill="#3b82f6">
+        <animate attributeName="opacity" values="0;1" dur="1s" repeatCount="indefinite"/>
+      </polygon>
+    </g>
+    
+    <!-- Visual model section -->
+    <g>
+      <rect x="10" y="85" width="108" height="33" rx="4" fill="url(#visualGradient)" stroke="#3b82f6" stroke-width="1"/>
+      
+      <!-- Entity boxes -->
+      <rect x="20" y="92" width="25" height="18" rx="2" fill="#2563eb" stroke="#60a5fa" stroke-width="1"/>
+      <rect x="60" y="92" width="25" height="18" rx="2" fill="#2563eb" stroke="#60a5fa" stroke-width="1"/>
+      
+      <!-- Relationship line -->
+      <line x1="45" y1="101" x2="60" y2="101" stroke="#60a5fa" stroke-width="1">
+        <animate attributeName="stroke-dashoffset" values="5;0" dur="1s" repeatCount="indefinite"/>
+      </line>
+      
+      <!-- Animation for "building" the model -->
+      <g>
+        <animate attributeName="opacity" values="0;1" dur="1.5s" fill="freeze" begin="0.5s"/>
+        <rect x="95" y="92" width="15" height="18" rx="2" fill="#2563eb" stroke="#60a5fa" stroke-width="1"/>
+        <line x1="85" y1="101" x2="95" y2="101" stroke="#60a5fa" stroke-width="1"/>
+      </g>
+    </g>
+  </g>
+</svg>
