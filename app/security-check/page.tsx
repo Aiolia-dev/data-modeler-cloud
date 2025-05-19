@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function SecurityCheck() {
+function SecurityCheckContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [grid, setGrid] = useState<number[]>([]);
@@ -160,5 +160,20 @@ export default function SecurityCheck() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SecurityCheck() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="bg-gray-900 rounded-lg p-8 w-[450px] shadow-xl">
+          <h1 className="text-2xl font-medium mb-2">Security Check</h1>
+          <p className="text-sm text-gray-400 mb-8">Loading security grid...</p>
+        </div>
+      </div>
+    }>
+      <SecurityCheckContent />
+    </Suspense>
   );
 }

@@ -9,14 +9,17 @@ export default function AuthTestPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const supabase = createClient();
+  const [supabase, setSupabase] = useState<any>(null);
   
   useEffect(() => {
+    // Initialize Supabase client only on the client side
+    const supabaseClient = createClient();
+    setSupabase(supabaseClient);
+    
     async function getUser() {
       try {
         setLoading(true);
-        const { data, error } = await supabase.auth.getUser();
+        const { data, error } = await supabaseClient.auth.getUser();
         
         if (error) {
           throw error;
@@ -34,8 +37,10 @@ export default function AuthTestPage() {
   }, []);
   
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/sign-in";
+    if (supabase) {
+      await supabase.auth.signOut();
+      window.location.href = "/sign-in";
+    }
   };
   
   return (
