@@ -3,12 +3,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import DemoRequestModal from './demo-request-modal';
 
 export default function NewHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const backgroundRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
 
   // Parallax scrolling effect
   useEffect(() => {
@@ -152,10 +154,19 @@ export default function NewHero() {
             <Link href="/security-check?redirectTo=/auth-pages/sign-up" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors">
               Get Started
             </Link>
-            <Link href="#demo" className="border border-blue-400 hover:bg-blue-800/30 text-white px-6 py-3 rounded-md font-medium transition-colors">
-              View Demo
-            </Link>
+            <button 
+              onClick={() => setIsDemoModalOpen(true)} 
+              className="border border-blue-400 hover:bg-blue-800/30 text-white px-6 py-3 rounded-md font-medium transition-colors"
+            >
+              Request a Demo
+            </button>
           </div>
+          
+          {/* Demo Request Modal */}
+          <DemoRequestModal 
+            isOpen={isDemoModalOpen} 
+            onClose={() => setIsDemoModalOpen(false)} 
+          />
           
           {/* Social proof */}
           <div className="flex items-center space-x-2 text-sm text-blue-200">
