@@ -70,7 +70,12 @@ export default function RootLayout({
                     </Link>
                     {/* DeployButton removed */}
                   </div>
-                  <ConditionalHeaderAuth />
+                  <div className="flex items-center gap-4">
+                    <Link href="/pricing" className="text-sm hover:text-indigo-400 transition-colors">
+                      Pricing
+                    </Link>
+                    <ConditionalHeaderAuth />
+                  </div>
                 </div>
               </nav>
               <div className="flex flex-col gap-4 w-full px-5">
